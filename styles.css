@@ -4895,20 +4895,26 @@ body {
   }
 
   body.is-customer-site .site-header {
-    grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+    grid-template-columns: 118px minmax(0, 1fr);
     align-items: center;
     min-height: 0;
-    column-gap: 10px;
+    column-gap: 8px;
     row-gap: 8px;
     padding: 10px 14px 12px;
   }
 
   body.is-customer-site .brand {
     order: 1;
-    width: max-content;
-    max-width: 100%;
+    width: 118px;
+    max-width: 118px;
     min-width: 0;
-    min-height: 40px;
+    min-height: 48px;
+    overflow: hidden;
+  }
+
+  body.is-customer-site .brand-logo {
+    width: 118px;
+    min-width: 118px;
   }
 
   body.is-customer-site .brand-name {
@@ -4922,7 +4928,7 @@ body {
   body.is-customer-site .header-actions {
     display: grid;
     grid-column: 2;
-    grid-template-columns: minmax(0, 1fr) 38px 38px;
+    grid-template-columns: minmax(0, 1fr) 36px 36px;
     order: 1;
     width: 100%;
     gap: 6px;
@@ -4934,12 +4940,12 @@ body {
     width: 100%;
     min-width: 0;
     min-height: 40px;
-    padding: 0 12px;
+    padding: 0 10px;
   }
 
   body.is-customer-site .icon-button {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
   }
 
   body.is-customer-site #cartCount {
@@ -5646,11 +5652,14 @@ body.is-customer-site .hero-trust span::before {
 
 @media (max-width: 760px) {
   body.is-customer-site .brand {
-    max-width: 150px;
+    width: 118px;
+    max-width: 118px;
+    overflow: hidden;
   }
 
   body.is-customer-site .brand-logo {
-    width: 142px;
+    width: 118px;
+    min-width: 118px;
   }
 
   body.is-customer-site .hero {
