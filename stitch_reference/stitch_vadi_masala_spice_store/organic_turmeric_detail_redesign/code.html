@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vadi Masala - Organic Turmeric Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#31302d",
+                        "surface-variant": "#e6e2dc",
+                        "secondary": "#9a4431",
+                        "surface-container-high": "#ebe8e2",
+                        "primary-fixed": "#ffdcc2",
+                        "inverse-on-surface": "#f4f0ea",
+                        "on-tertiary-container": "#0d5332",
+                        "secondary-fixed": "#ffdad3",
+                        "surface-container-highest": "#e6e2dc",
+                        "on-secondary-fixed-variant": "#7c2d1d",
+                        "surface-tint": "#8f4d00",
+                        "inverse-primary": "#ffb77b",
+                        "secondary-container": "#fd9079",
+                        "on-error-container": "#93000a",
+                        "surface": "#fdf9f3",
+                        "primary": "#8f4d00",
+                        "secondary-fixed-dim": "#ffb4a4",
+                        "on-surface-variant": "#544437",
+                        "outline-variant": "#dac2b2",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#fdf9f3",
+                        "tertiary-fixed-dim": "#93d5aa",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#0b5131",
+                        "on-secondary-container": "#752818",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#6f3b00",
+                        "tertiary-fixed": "#aff1c5",
+                        "surface-dim": "#dddad4",
+                        "on-surface": "#1c1c18",
+                        "on-primary-fixed": "#2e1500",
+                        "on-background": "#1c1c18",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#fdf9f3",
+                        "on-error": "#ffffff",
+                        "tertiary": "#2a6a47",
+                        "outline": "#877365",
+                        "primary-container": "#ffa14a",
+                        "surface-container": "#f1ede7",
+                        "primary-fixed-dim": "#ffb77b",
+                        "on-tertiary-fixed": "#002110",
+                        "surface-container-low": "#f7f3ed",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#3e0500",
+                        "tertiary-container": "#84c59b",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin-desktop": "64px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "container-margin-mobile": "20px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["DM Sans"],
+                        "headline-lg-mobile": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "label-lg": ["DM Sans"],
+                        "label-sm": ["DM Sans"],
+                        "body-md": ["DM Sans"],
+                        "display-lg": ["DM Sans"],
+                        "headline-md": ["DM Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+        
+        /* Ambient Shadow for Cards */
+        .ambient-shadow {
+            box-shadow: 0px 10px 30px 0px rgba(143, 77, 0, 0.04);
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- TopNavBar JSON Component -->
+<header class="w-full top-0 sticky bg-surface/80 backdrop-blur-md z-50">
+<nav class="flex justify-between items-center max-w-[1200px] mx-auto px-container-margin-mobile md:px-container-margin-desktop py-4">
+<!-- Brand -->
+<a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed" href="#">Vadi Masala</a>
+<!-- Desktop Nav -->
+<div class="hidden md:flex items-center gap-8 font-body-md text-body-md">
+<a class="text-primary dark:text-primary-fixed font-bold border-b-2 border-primary pb-1" href="#">Spices</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Our Story</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Sustainability</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Policies</a>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-4 text-primary dark:text-primary-fixed">
+<button class="scale-95 active:scale-90 transition-transform hover:text-primary p-2">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+<button class="scale-95 active:scale-90 transition-transform hover:text-primary p-2 hidden md:block">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+<button class="md:hidden scale-95 active:scale-90 transition-transform hover:text-primary p-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</nav>
+</header>
+<main class="flex-grow w-full max-w-[1200px] mx-auto px-container-margin-mobile md:px-container-margin-desktop py-section-gap">
+<!-- Breadcrumb & Back -->
+<div class="flex items-center gap-2 mb-8 text-on-surface-variant font-label-lg text-label-lg">
+<a class="flex items-center gap-1 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">arrow_back_ios</span> Back to Spices
+            </a>
+</div>
+<!-- Hero Product Section -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-section-gap">
+<!-- Image Gallery (Left) -->
+<div class="md:col-span-7 flex flex-col gap-4">
+<div class="relative w-full aspect-square rounded-xl overflow-hidden ambient-shadow bg-surface-container-low">
+<img alt="High quality close up of organic turmeric powder in a wooden bowl on a light textured surface, surrounded by whole turmeric roots. Warm, vibrant orange and yellow hues, soft natural lighting." class="object-cover w-full h-full mix-blend-multiply opacity-90" data-alt="A premium top-down shot of vibrant organic turmeric powder heaped in a smooth wooden bowl. The bowl sits on a very subtle, light cream textured linen surface. A few whole, fresh turmeric roots rest gently beside the bowl. The lighting is soft and natural, emphasizing the rich, earthy orange tones of the spice against the clean, minimalist background, evoking a fresh, healthy, and high-end culinary aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkmS6nIu3RJsG4p0tP0khWWhBjG81PLT_dk6aMqkOlnDdC2yvHtAqYN5o_IjrF3HZA1NN21rs4Zz8i6PyOTxcdXL96InHaOA-dZqPJJ1p490kKQbyLLsCymK_3SlBMT6TMXs1ojolVHO16nesMDhaMqQ9_iHp87TL9z1pvCnnRbNKBgalhaoH_zlPy0_yqTEvCHTSI8NWuV8xdoSe72VGN21bnVcRHOOZLPGUcG07b_Immg7AFEWae3WH8wcETuJ0BI672hY83tDQ"/>
+<!-- Badges -->
+<div class="absolute top-4 left-4 flex gap-2">
+<span class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 shadow-sm backdrop-blur-md bg-opacity-90">
+<span class="material-symbols-outlined text-[16px] icon-fill text-tertiary">verified</span>
+                            100% Organic
+                        </span>
+</div>
+</div>
+<!-- Thumbnails -->
+<div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+<button class="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary flex-shrink-0">
+<img alt="Thumbnail 1" class="object-cover w-full h-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEbQehJUT1A2GjJH2HIfEDUCEFxVfGjLLTrdR8ks6CgTng1QPe7d7JDvqcT81h1GKL3e96pIncLnl1bDd6FIPqmwJVmiHtdWxGwwu9wDsEfKh-34Cpk264eAdYllkkN4cidoNSOgah_IoEi_hh6Unp0UY2Sj8ixN_oeLn7LKU0OneO7QtnpfEyr3pkqRoLwdXWkY2khn5J44fYwBf1zu60nlrK2n9iKbAJODNl93Pyou81HHulKTtxeqRPA5gWz-jdtv3AEMfoW6o"/>
+</button>
+<button class="w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-outline-variant transition-colors flex-shrink-0 opacity-70 hover:opacity-100 bg-surface-container-low">
+<img alt="Thumbnail 2" class="object-cover w-full h-full mix-blend-multiply" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnZzI-MvRnNNMtyolnoaIXKUyTbn8aqvO_PEB5aZ-zKEBvbV6sEgE9vpbFCgNdh86NIhDZ8LSlJH2KhOyTCQFPl4c2GBfQijkeRHHy55skElgcvoPnKdgLJnAf74Dc_Dc5dAFh-FoIzqWJZi3ncdCsyJfWsVvOS6O04LYvjv2Bybc6WU4HLsMxZHUumSTrSpXOpM_8wbB5bMzo1UZWEkJY94yJXgYktyegwJuJUMmV0DnWJ-aX3ZvumWufOANnJQJH5NTvp2LxCVM"/>
+</button>
+<button class="w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-outline-variant transition-colors flex-shrink-0 opacity-70 hover:opacity-100 bg-surface-container-low">
+<img alt="Thumbnail 3" class="object-cover w-full h-full mix-blend-multiply" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATTtlsKamRETZBGA7xuOV7psehsnehXu1MIjLdKMZT41p1W_zizTmBL9bzumITNzTIHZzHu0ZOx40iRj1vSmsz6s0NvFbFCUegLBg8ZHCfk8Ybd3vFFP_LMciDYJSSqN917YlDDvTRouiPn26MOAyDAdUk0Efhy9wk6V_dGJfhN6fZCDQLRCptbQ8u9l-s48w3rZgqbJ4T6lkkDVuibnbtuEDhUAhfB9FKT9PP7exd5LR6wHG7s_Zi_qseOzZgJWK-6vEWFN-VAdY"/>
+</button>
+</div>
+</div>
+<!-- Product Details (Right) -->
+<div class="md:col-span-5 flex flex-col pt-4 md:pt-0">
+<div class="mb-6">
+<h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg text-primary mb-2">Organic Turmeric</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Salem, Tamil Nadu, India</p>
+</div>
+<div class="mb-8">
+<div class="flex items-end gap-4 mb-2">
+<span class="font-headline-lg text-headline-lg text-tertiary">$14.00</span>
+<span class="font-body-md text-body-md text-outline line-through mb-1">$18.00</span>
+</div>
+<p class="font-label-sm text-label-sm text-tertiary bg-tertiary-fixed/30 inline-block px-2 py-1 rounded-md">Save 22%</p>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-8 leading-relaxed">
+                    Sourced directly from the rich soils of Salem, our organic turmeric boasts a high curcumin content (above 5%), offering a vibrant golden hue and a deep, earthy flavor profile. Perfect for curries, lattes, and wellness shots.
+                </p>
+<!-- Quantity & Add to Cart -->
+<div class="flex flex-col gap-4 mb-8 p-6 bg-surface-container-low rounded-xl ambient-shadow">
+<div class="flex justify-between items-center mb-4">
+<label class="font-label-lg text-label-lg text-on-surface">Size</label>
+<div class="flex gap-2">
+<button class="px-4 py-2 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm border border-primary">250g</button>
+<button class="px-4 py-2 rounded-full bg-surface text-on-surface-variant font-label-sm text-label-sm border border-outline-variant hover:border-primary transition-colors">500g</button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface rounded-full border border-outline-variant p-1">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary rounded-full transition-colors">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<span class="w-8 text-center font-label-lg text-label-lg text-on-surface">1</span>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary rounded-full transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<button class="flex-grow bg-primary text-on-primary font-label-lg text-label-lg py-4 rounded-full flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors ambient-shadow active:scale-[0.98]">
+<span class="material-symbols-outlined">shopping_basket</span>
+                            Add to Cart
+                        </button>
+</div>
+</div>
+<!-- Quick Facts Cards -->
+<div class="grid grid-cols-2 gap-4">
+<div class="flex items-center gap-3 p-4 rounded-lg bg-surface-container-low border border-surface-dim">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined">health_and_safety</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-[10px]">Curcumin</span>
+<span class="font-label-lg text-label-lg text-on-surface">5.5% High</span>
+</div>
+</div>
+<div class="flex items-center gap-3 p-4 rounded-lg bg-surface-container-low border border-surface-dim">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">eco</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-[10px]">Farming</span>
+<span class="font-label-lg text-label-lg text-on-surface">Regenerative</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- The Vadi Difference (Bento Grid) -->
+<section class="mt-section-gap mb-section-gap">
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-8 text-center">The Vadi Difference</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="bg-surface-container-low rounded-xl p-8 ambient-shadow flex flex-col gap-4 border border-surface-dim hover:border-primary-fixed-dim transition-colors">
+<div class="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed mb-2">
+<span class="material-symbols-outlined text-[28px]">landscape</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Single Origin</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Sourced exclusively from a single cooperative of farmers in Salem to ensure consistent flavor profile, terroir, and equitable trade practices.</p>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-low rounded-xl p-8 ambient-shadow flex flex-col gap-4 border border-surface-dim hover:border-primary-fixed-dim transition-colors">
+<div class="w-14 h-14 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed mb-2">
+<span class="material-symbols-outlined text-[28px]">pest_control</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Pesticide Free</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Rigorous third-party lab testing guarantees our turmeric is 100% free from harmful chemicals, synthetic fertilizers, and heavy metals.</p>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-low rounded-xl p-8 ambient-shadow flex flex-col gap-4 border border-surface-dim hover:border-primary-fixed-dim transition-colors">
+<div class="w-14 h-14 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed mb-2">
+<span class="material-symbols-outlined text-[28px]">auto_awesome</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Cold Milled</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Processed using traditional cold-milling techniques to retain the volatile essential oils and maximize the natural health benefits.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer JSON Component -->
+<footer class="w-full mt-section-gap bg-surface-container-low dark:bg-inverse-surface border-t border-surface-dim">
+<div class="flex flex-col md:flex-row justify-between items-center max-w-[1200px] mx-auto px-container-margin-desktop py-section-gap gap-gutter">
+<div class="flex flex-col items-center md:items-start gap-2">
+<span class="font-headline-md text-headline-md text-primary font-bold">Vadi Masala</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant opacity-80 hover:opacity-100 transition-opacity">© 2024 Vadi Masala. All rights reserved.</span>
+</div>
+<div class="flex flex-wrap justify-center gap-6 font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant">
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Certifications</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Reports</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Policies</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Contact Us</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Privacy</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Terms</a>
+</div>
+</div>
+</footer>
+</body></html>

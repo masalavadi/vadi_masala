@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vadi Masala - Policies</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-surface": "#31302d",
+                      "surface-variant": "#e6e2dc",
+                      "secondary": "#9a4431",
+                      "surface-container-high": "#ebe8e2",
+                      "primary-fixed": "#ffdcc2",
+                      "inverse-on-surface": "#f4f0ea",
+                      "on-tertiary-container": "#0d5332",
+                      "secondary-fixed": "#ffdad3",
+                      "surface-container-highest": "#e6e2dc",
+                      "on-secondary-fixed-variant": "#7c2d1d",
+                      "surface-tint": "#8f4d00",
+                      "inverse-primary": "#ffb77b",
+                      "secondary-container": "#fd9079",
+                      "on-error-container": "#93000a",
+                      "surface": "#fdf9f3",
+                      "primary": "#8f4d00",
+                      "secondary-fixed-dim": "#ffb4a4",
+                      "on-surface-variant": "#544437",
+                      "outline-variant": "#dac2b2",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#fdf9f3",
+                      "tertiary-fixed-dim": "#93d5aa",
+                      "on-primary-fixed-variant": "#6d3a00",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-fixed-variant": "#0b5131",
+                      "on-secondary-container": "#752818",
+                      "error": "#ba1a1a",
+                      "on-primary-container": "#6f3b00",
+                      "tertiary-fixed": "#aff1c5",
+                      "surface-dim": "#dddad4",
+                      "on-surface": "#1c1c18",
+                      "on-primary-fixed": "#2e1500",
+                      "on-background": "#1c1c18",
+                      "on-tertiary": "#ffffff",
+                      "surface-bright": "#fdf9f3",
+                      "on-error": "#ffffff",
+                      "tertiary": "#2a6a47",
+                      "outline": "#877365",
+                      "primary-container": "#ffa14a",
+                      "surface-container": "#f1ede7",
+                      "primary-fixed-dim": "#ffb77b",
+                      "on-tertiary-fixed": "#002110",
+                      "surface-container-low": "#f7f3ed",
+                      "on-primary": "#ffffff",
+                      "on-secondary-fixed": "#3e0500",
+                      "tertiary-container": "#84c59b",
+                      "on-secondary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-margin-desktop": "64px",
+                      "gutter": "24px",
+                      "section-gap": "48px",
+                      "container-margin-mobile": "20px",
+                      "unit": "8px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "DM Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "DM Sans"
+                      ],
+                      "body-lg": [
+                              "DM Sans"
+                      ],
+                      "label-lg": [
+                              "DM Sans"
+                      ],
+                      "label-sm": [
+                              "DM Sans"
+                      ],
+                      "body-md": [
+                              "DM Sans"
+                      ],
+                      "display-lg": [
+                              "DM Sans"
+                      ],
+                      "headline-md": [
+                              "DM Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        
+        .nav-link {
+            transition: color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .policy-card {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        }
+        
+        /* Smooth scrolling for internal links */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Offset for fixed header when scrolling to sections */
+        section[id] {
+            scroll-margin-top: 100px; /* Adjust based on TopAppBar height + gap */
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+<!-- TopNavBar Component -->
+<nav class="bg-surface dark:bg-inverse-surface w-full top-0 sticky bg-surface/80 backdrop-blur-md z-50">
+<div class="flex justify-between items-center max-w-[1200px] mx-auto px-container-margin-desktop py-4 max-md:px-container-margin-mobile">
+<!-- Brand Logo -->
+<a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed scale-95 active:scale-90 transition-transform" href="#">
+                Vadi Masala
+            </a>
+<!-- Navigation Links (Hidden on Mobile) -->
+<div class="hidden md:flex space-x-8 items-center font-body-md text-body-md">
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Spices</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Our Story</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Sustainability</a>
+<a class="text-primary dark:text-primary-fixed font-bold border-b-2 border-primary hover:text-primary transition-colors duration-200" href="#">Policies</a>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center space-x-4 text-primary dark:text-primary-fixed">
+<button aria-label="shopping_cart" class="scale-95 active:scale-90 transition-transform p-2 rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</button>
+<button aria-label="account_circle" class="scale-95 active:scale-90 transition-transform p-2 rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+<!-- Mobile Menu Button (Visible on Mobile) -->
+<button aria-label="menu" class="md:hidden scale-95 active:scale-90 transition-transform p-2 rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow max-w-[1200px] mx-auto w-full px-container-margin-desktop max-md:px-container-margin-mobile py-section-gap flex flex-col md:flex-row gap-gutter">
+<!-- Sidebar Navigation -->
+<aside class="md:w-1/4 flex-shrink-0 mb-8 md:mb-0">
+<div class="sticky top-[100px]">
+<h1 class="font-headline-lg text-headline-lg md:text-headline-lg max-md:text-headline-lg-mobile text-on-surface mb-6">Store Policies</h1>
+<!-- Nav Links -->
+<nav class="flex flex-col space-y-2 font-label-lg text-label-lg">
+<a class="nav-link px-4 py-3 rounded-DEFAULT bg-primary-container text-on-primary-container font-bold flex items-center justify-between" href="#shipping" id="nav-shipping">
+                        Shipping &amp; Delivery
+                        <span class="material-symbols-outlined text-sm" data-icon="local_shipping">local_shipping</span>
+</a>
+<a class="nav-link px-4 py-3 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-low hover:text-primary flex items-center justify-between" href="#returns" id="nav-returns">
+                        Return Policy
+                        <span class="material-symbols-outlined text-sm" data-icon="assignment_return">assignment_return</span>
+</a>
+<a class="nav-link px-4 py-3 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container-low hover:text-primary flex items-center justify-between" href="#privacy" id="nav-privacy">
+                        Privacy Policy
+                        <span class="material-symbols-outlined text-sm" data-icon="privacy_tip">privacy_tip</span>
+</a>
+</nav>
+<!-- Help Card -->
+<div class="mt-8 bg-surface-container p-6 rounded-lg policy-card">
+<div class="flex items-center space-x-3 mb-4 text-primary">
+<span class="material-symbols-outlined bg-surface-container-highest p-2 rounded-full" data-icon="support_agent">support_agent</span>
+<h3 class="font-headline-md text-label-lg font-bold">Need Help?</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Can't find what you're looking for? Our team is here to assist you.</p>
+<button class="w-full py-3 bg-white text-primary border border-outline-variant rounded-full font-label-lg text-label-lg hover:bg-surface-container-low transition-colors">
+                        Contact Support
+                    </button>
+</div>
+</div>
+</aside>
+<!-- Policy Content Area -->
+<div class="md:w-3/4 flex flex-col space-y-12">
+<!-- Shipping & Delivery Section -->
+<section class="bg-surface-container-lowest p-8 md:p-10 rounded-xl policy-card border border-surface-container-low" id="shipping">
+<div class="flex items-center mb-6 text-primary">
+<span class="material-symbols-outlined text-3xl mr-4 p-3 bg-surface-container-low rounded-full" data-icon="local_shipping">local_shipping</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Shipping &amp; Delivery</h2>
+</div>
+<div class="space-y-6 font-body-md text-body-md text-on-surface-variant">
+<p>We strive to deliver your spices fresh and fast. All orders are processed within 1-2 business days. You will receive a confirmation email with tracking information once your order has shipped.</p>
+<div class="bg-surface-container-low p-6 rounded-lg">
+<h3 class="font-label-lg text-label-lg text-on-surface font-bold mb-3">Standard Delivery Rates</h3>
+<ul class="space-y-2">
+<li class="flex justify-between border-b border-surface-variant pb-2">
+<span>Domestic (Standard 3-5 days)</span>
+<span class="font-bold text-on-surface">$5.99</span>
+</li>
+<li class="flex justify-between border-b border-surface-variant pb-2">
+<span>Expedited (1-2 days)</span>
+<span class="font-bold text-on-surface">$12.99</span>
+</li>
+<li class="flex justify-between pt-2">
+<span>Orders over $50</span>
+<span class="font-bold text-tertiary flex items-center">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="check_circle">check_circle</span>
+                                    FREE
+                                </span>
+</li>
+</ul>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold mt-6 mb-2">International Shipping</h4>
+<p>Currently, we ship to select international destinations. Shipping times and costs vary depending on the location. Duties and taxes are the responsibility of the customer.</p>
+</div>
+</section>
+<!-- Return Policy Section -->
+<section class="bg-surface-container-lowest p-8 md:p-10 rounded-xl policy-card border border-surface-container-low" id="returns">
+<div class="flex items-center mb-6 text-primary">
+<span class="material-symbols-outlined text-3xl mr-4 p-3 bg-surface-container-low rounded-full" data-icon="assignment_return">assignment_return</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Return Policy</h2>
+</div>
+<div class="space-y-6 font-body-md text-body-md text-on-surface-variant">
+<p>Your satisfaction is our priority. Due to the perishable nature of our products, we have a specific return policy to ensure quality and safety.</p>
+<div class="grid md:grid-cols-2 gap-6">
+<div class="bg-surface-container-low p-5 rounded-lg border-l-4 border-tertiary">
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold flex items-center mb-2">
+<span class="material-symbols-outlined text-tertiary mr-2 text-sm" data-icon="check_circle">check_circle</span>
+                                What is eligible?
+                            </h4>
+<p class="text-sm">Unopened, sealed packages within 14 days of delivery. Incorrect items received or products damaged during transit.</p>
+</div>
+<div class="bg-error-container text-on-error-container p-5 rounded-lg border-l-4 border-error">
+<h4 class="font-label-lg text-label-lg font-bold flex items-center mb-2">
+<span class="material-symbols-outlined text-error mr-2 text-sm" data-icon="cancel">cancel</span>
+                                What is not eligible?
+                            </h4>
+<p class="text-sm">Opened packages. Returns requested after 14 days. Items bought on final sale.</p>
+</div>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold mt-6 mb-2">How to initiate a return</h4>
+<ol class="list-decimal pl-5 space-y-2">
+<li>Contact our support team within 14 days of receiving your order.</li>
+<li>Provide your order number and the reason for return.</li>
+<li>We will provide a return shipping label if the return is due to our error.</li>
+<li>Refunds will be processed to the original payment method within 5-7 business days after receiving the returned item.</li>
+</ol>
+</div>
+</section>
+<!-- Privacy Policy Section -->
+<section class="bg-surface-container-lowest p-8 md:p-10 rounded-xl policy-card border border-surface-container-low" id="privacy">
+<div class="flex items-center mb-6 text-primary">
+<span class="material-symbols-outlined text-3xl mr-4 p-3 bg-surface-container-low rounded-full" data-icon="privacy_tip">privacy_tip</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Privacy Policy</h2>
+</div>
+<div class="space-y-6 font-body-md text-body-md text-on-surface-variant">
+<p>We respect your privacy and are committed to protecting your personal data. This brief overview explains how we handle your information.</p>
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold mt-6 mb-2">Data Collection</h4>
+<p>We collect information you provide directly to us, such as when you create an account, place an order, or contact customer support. This includes name, email, shipping address, and payment details.</p>
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold mt-6 mb-2">How We Use Your Data</h4>
+<ul class="list-disc pl-5 space-y-2">
+<li>To process and fulfill your orders.</li>
+<li>To communicate with you about your order or our products.</li>
+<li>To improve our website and services.</li>
+<li>To protect against fraud.</li>
+</ul>
+<div class="bg-surface-container-low p-5 rounded-lg mt-6">
+<p class="text-sm">We do not sell your personal information to third parties. We only share it with trusted service providers necessary to operate our business (e.g., shipping partners, payment processors).</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer Component -->
+<footer class="bg-surface-container-low dark:bg-inverse-surface w-full mt-section-gap">
+<div class="flex flex-col md:flex-row justify-between items-center max-w-[1200px] mx-auto px-container-margin-desktop max-md:px-container-margin-mobile py-section-gap gap-gutter font-label-sm text-label-sm text-primary dark:text-primary-fixed">
+<!-- Brand Logo -->
+<div class="font-headline-md text-headline-md text-primary opacity-80 hover:opacity-100 transition-opacity mb-4 md:mb-0">
+                Vadi Masala
+            </div>
+<!-- Links -->
+<div class="flex flex-wrap justify-center gap-4 text-on-surface-variant dark:text-surface-variant">
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Certifications</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Reports</a>
+<a class="text-primary underline opacity-80 hover:opacity-100" href="#">Policies</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Contact Us</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Privacy</a>
+<a class="hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Terms</a>
+</div>
+<!-- Copyright -->
+<div class="text-on-surface-variant dark:text-surface-variant opacity-80 mt-4 md:mt-0">
+                © 2024 Vadi Masala. All rights reserved.
+            </div>
+</div>
+</footer>
+<!-- Simple Active State Script for Sidebar -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            const observerOptions = {
+                root: null,
+                rootMargin: '-20% 0px -80% 0px', // Adjust triggers
+                threshold: 0
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        
+                        // Reset all links
+                        navLinks.forEach(link => {
+                            link.classList.remove('bg-primary-container', 'text-on-primary-container', 'font-bold');
+                            link.classList.add('text-on-surface-variant', 'hover:bg-surface-container-low', 'hover:text-primary');
+                        });
+
+                        // Highlight active link
+                        const activeLink = document.querySelector(`#nav-${id}`);
+                        if(activeLink) {
+                            activeLink.classList.add('bg-primary-container', 'text-on-primary-container', 'font-bold');
+                            activeLink.classList.remove('text-on-surface-variant', 'hover:bg-surface-container-low', 'hover:text-primary');
+                        }
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body></html>

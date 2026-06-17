@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vadi Masala - Pure Spices</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#31302d",
+                        "surface-variant": "#e6e2dc",
+                        "secondary": "#9a4431",
+                        "surface-container-high": "#ebe8e2",
+                        "primary-fixed": "#ffdcc2",
+                        "inverse-on-surface": "#f4f0ea",
+                        "on-tertiary-container": "#0d5332",
+                        "secondary-fixed": "#ffdad3",
+                        "surface-container-highest": "#e6e2dc",
+                        "on-secondary-fixed-variant": "#7c2d1d",
+                        "surface-tint": "#8f4d00",
+                        "inverse-primary": "#ffb77b",
+                        "secondary-container": "#fd9079",
+                        "on-error-container": "#93000a",
+                        "surface": "#fdf9f3",
+                        "primary": "#8f4d00",
+                        "secondary-fixed-dim": "#ffb4a4",
+                        "on-surface-variant": "#544437",
+                        "outline-variant": "#dac2b2",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#fdf9f3",
+                        "tertiary-fixed-dim": "#93d5aa",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#0b5131",
+                        "on-secondary-container": "#752818",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#6f3b00",
+                        "tertiary-fixed": "#aff1c5",
+                        "surface-dim": "#dddad4",
+                        "on-surface": "#1c1c18",
+                        "on-primary-fixed": "#2e1500",
+                        "on-background": "#1c1c18",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#fdf9f3",
+                        "on-error": "#ffffff",
+                        "tertiary": "#2a6a47",
+                        "outline": "#877365",
+                        "primary-container": "#ffa14a",
+                        "surface-container": "#f1ede7",
+                        "primary-fixed-dim": "#ffb77b",
+                        "on-tertiary-fixed": "#002110",
+                        "surface-container-low": "#f7f3ed",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#3e0500",
+                        "tertiary-container": "#84c59b",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin-desktop": "64px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "container-margin-mobile": "20px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["DM Sans"],
+                        "headline-lg-mobile": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "label-lg": ["DM Sans"],
+                        "label-sm": ["DM Sans"],
+                        "body-md": ["DM Sans"],
+                        "display-lg": ["DM Sans"],
+                        "headline-md": ["DM Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Soft Floating Shadow */
+        .shadow-soft {
+            box-shadow: 0px 10px 30px 0px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="w-full top-0 sticky bg-surface/80 backdrop-blur-md z-50">
+<div class="flex justify-between items-center max-w-[1200px] mx-auto px-container-margin-mobile md:px-container-margin-desktop py-4">
+<a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed" href="#">
+                Vadi Masala
+            </a>
+<div class="hidden md:flex items-center gap-gutter">
+<a class="text-primary dark:text-primary-fixed font-bold border-b-2 border-primary pb-1" href="#">Spices</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200 pb-1" href="#">Our Story</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200 pb-1" href="#">Sustainability</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200 pb-1" href="#">Policies</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-primary dark:text-primary-fixed scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</button>
+<button class="text-primary dark:text-primary-fixed scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+<button class="md:hidden text-primary dark:text-primary-fixed scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+</div>
+</nav>
+<main class="flex-grow">
+<!-- Hero Section -->
+<section class="relative w-full max-w-[1200px] mx-auto px-container-margin-mobile md:px-container-margin-desktop py-section-gap">
+<div class="bg-surface-container-low rounded-xl overflow-hidden shadow-soft flex flex-col md:flex-row relative">
+<div class="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center relative z-10">
+<span class="font-label-lg text-label-lg text-secondary uppercase tracking-wider mb-4 block">Premium Organic Selection</span>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-6">
+                        Pure Spices,<br/>Rooted in Tradition
+                    </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8 max-w-md">
+                        Experience the vibrant flavors and vibrant aromas of authentically sourced spices. Perfect for culinary enthusiasts and professional kitchens.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+<button class="bg-primary text-on-primary font-label-lg text-label-lg px-8 py-4 rounded-full hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm w-full sm:w-auto">
+                            Shop Collection
+                        </button>
+<div class="flex items-center gap-2 text-surface-tint">
+<span class="material-symbols-outlined fill-icon" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-sm text-label-sm font-semibold">100g MOQ Available</span>
+</div>
+</div>
+</div>
+<div class="w-full md:w-1/2 h-64 md:h-auto relative">
+<img alt="Hero Spices" class="absolute inset-0 w-full h-full object-cover" data-alt="A vibrant, top-down photograph of various colorful spices in beautiful rustic bowls on a light wooden surface. The spices include bright turmeric, deep red chili powder, and textured black peppercorns. The lighting is soft, warm, and natural, creating a premium, inviting, and healthy atmosphere. The composition is clean and modern, fitting a high-end culinary brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXeU5Or3fnh-gv03jyqpUR6I__s1fz2rVHa1GXNQjq7H63oYraV4c4pQ_8EIUwvb1ujRtcYDSYPRqPeRiTHChvWHOCZaAICZT_voLTyn-k-GGHhno9Vv7y0dCqhznOOvRPr4jF1-4WQFU8DVfjieRe_Y4HY0ksddMF7ucKDupDjsvNr-j-f1FkqTqynP4FK10zeV-bEvf8SpFF-roOWHwziRjrxPy7X9bCnY2cedbiZhmatobptj42WRHKgFTOPuZhIqa6FcWUxz4"/>
+</div>
+</div>
+</section>
+<!-- Value Proposition Bar -->
+<section class="w-full bg-surface-container py-8 my-section-gap">
+<div class="max-w-[1200px] mx-auto px-container-margin-mobile md:px-container-margin-desktop">
+<div class="flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<div class="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed shrink-0">
+<span class="material-symbols-outlined fill-icon" data-icon="eco">eco</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-lg">100% Organic</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Certified pure sourcing</p>
+</div>
+</div>
+<div class="hidden md:block w-px h-12 bg-outline-variant"></div>
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed shrink-0">
+<span class="material-symbols-outlined fill-icon" data-icon="inventory_2">inventory_2</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-lg">Wholesale &amp; Bulk</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Flexible 100g minimums</p>
+</div>
+</div>
+<div class="hidden md:block w-px h-12 bg-outline-variant"></div>
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shrink-0">
+<span class="material-symbols-outlined fill-icon" data-icon="verified">verified</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-lg">Sealed Freshness</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Aroma locked packaging</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Signature Spices Grid -->
+<section class="max-w-[1200px] mx-auto px-container-margin-mobile md:px-container-margin-desktop py-section-gap">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Our Signature Spices</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">Discover the foundation of exceptional flavor.</p>
+</div>
+<button class="hidden md:flex items-center gap-2 font-label-lg text-label-lg text-primary hover:text-surface-tint transition-colors group">
+<span>View All Spices</span>
+<span class="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Product Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg p-4 shadow-soft group hover:-translate-y-1 transition-transform duration-300">
+<div class="relative w-full aspect-square rounded-DEFAULT overflow-hidden mb-4 bg-surface-container flex items-center justify-center">
+<img alt="Turmeric Powder" class="w-3/4 h-3/4 object-cover rounded-full shadow-sm group-hover:scale-105 transition-transform duration-500" data-alt="A pristine white bowl filled with vibrant, bright yellow organic turmeric powder. The bowl rests on a clean, light cream background. The lighting is bright and even, highlighting the fine texture of the powder. The aesthetic is modern, healthy, and minimalist, emphasizing the purity of the spice." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChhnybjoC-DJMZvfLgJ0eEd6DfVEzA14-cQIKWFD6zYnSgkIlPhQl9gKMJhqTOEkSnLGc_Deyy9ENaFQ_Y8DLNT1X9j0oy_CTI4S5cAyfJnaLPH3qhH3oTEGLIQ9tUIeY9wcL-RS0m-r1OLwRlG4fbm6LKJKJ6e8amf63n-2-I-C1ZINHius-yN186HwBTiK47-zeP-ummqwKEKe6uqYjjlwRQ3dMcEX1tFOSuS7F_ddwZu9fc0Bltpe0lrgE3UdGoyRDCtuStchU"/>
+<div class="absolute top-2 right-2 bg-surface-container-lowest rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined text-outline hover:text-secondary cursor-pointer transition-colors" data-icon="favorite_border">favorite_border</span>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-md text-headline-md text-lg text-on-surface">Golden Turmeric</h3>
+<span class="font-label-lg text-label-lg text-tertiary">Organic</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-3">Min. Order: 100g</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="font-headline-md text-headline-md text-lg text-primary">₹ 240 <span class="text-sm font-body-md text-on-surface-variant">/100g</span></span>
+<button aria-label="Add to cart" class="bg-primary-container text-on-primary-container w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg p-4 shadow-soft group hover:-translate-y-1 transition-transform duration-300">
+<div class="relative w-full aspect-square rounded-DEFAULT overflow-hidden mb-4 bg-surface-container flex items-center justify-center">
+<img alt="Black Pepper" class="w-3/4 h-3/4 object-cover rounded-full shadow-sm group-hover:scale-105 transition-transform duration-500" data-alt="A clean, minimalist shot of whole black peppercorns piled neatly in a small, elegant ceramic dish. The background is a soft, warm off-white. The lighting is sharp, bringing out the rough, organic texture of the peppercorns. The overall mood is premium, earthy, and sophisticated." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx8RvTA-zuigTOqGV7A4SUgW7WB7D8lSZaklPnrGomaiD0Fl0pizu273SM5HrQ1pJbJ_aHMZWd-HHHXHmrFs8Ge2EnH4gCjs_sCpuD4RFq56_PatSWjcRY5DgoKW6e7DAFhozDd8zDgrD9T5gOYqR-rEDCSyj3pI45djwI2A-L8YQ6mMnpVkBEozT4xwK9pvgKc5EhAFGpsFdK_3qWFV9kwJgMqOWYF7gaysC6N8ysYvnkheW1LKSIXC3Y_frkx2Zc72AhT_daT9g"/>
+<div class="absolute top-2 right-2 bg-surface-container-lowest rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined text-outline hover:text-secondary cursor-pointer transition-colors" data-icon="favorite_border">favorite_border</span>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-md text-headline-md text-lg text-on-surface">Tellicherry Pepper</h3>
+<span class="font-label-lg text-label-lg text-tertiary">Premium</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-3">Min. Order: 100g</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="font-headline-md text-headline-md text-lg text-primary">₹ 350 <span class="text-sm font-body-md text-on-surface-variant">/100g</span></span>
+<button aria-label="Add to cart" class="bg-primary-container text-on-primary-container w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-container-lowest rounded-lg p-4 shadow-soft group hover:-translate-y-1 transition-transform duration-300">
+<div class="relative w-full aspect-square rounded-DEFAULT overflow-hidden mb-4 bg-surface-container flex items-center justify-center">
+<img alt="Red Chili Powder" class="w-3/4 h-3/4 object-cover rounded-full shadow-sm group-hover:scale-105 transition-transform duration-500" data-alt="A striking image of deep red chili powder presented in a modern, shallow bowl against a light cream backdrop. The vibrant red color pops beautifully against the neutral surroundings. The lighting is soft but directed, creating subtle shadows that give depth to the powder. The aesthetic is clean, energetic, and high-quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWE21mID68GjQJzLYolCNaXql0aYWr9DsmEs3mCbgu9B1bG5HrfWvU07TKPCAomSKpiFmZmOakCOHCStw0YzxoHL-IqupIKtkZdeBPpCyYGwrNTOWdD2STXoWsIuaqnrBolscCFDxOfvGGu6PSB_uCmEdaaOSJylzojTXFR0-y4pA51g791ycQu179FJ4MEZahtKJvJPGpdbvIY9STsxv935Xs8_vOmGF_foWRxgY7yGohgLGvCKOMAMdxrVtjgyRPc5XtbjTKN7c"/>
+<div class="absolute top-2 right-2 bg-surface-container-lowest rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined text-outline hover:text-secondary cursor-pointer transition-colors" data-icon="favorite_border">favorite_border</span>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-md text-headline-md text-lg text-on-surface">Kashmiri Chili</h3>
+<span class="font-label-lg text-label-lg text-tertiary">Mild</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-3">Min. Order: 100g</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="font-headline-md text-headline-md text-lg text-primary">₹ 280 <span class="text-sm font-body-md text-on-surface-variant">/100g</span></span>
+<button aria-label="Add to cart" class="bg-primary-container text-on-primary-container w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="bg-surface-container-lowest rounded-lg p-4 shadow-soft group hover:-translate-y-1 transition-transform duration-300">
+<div class="relative w-full aspect-square rounded-DEFAULT overflow-hidden mb-4 bg-surface-container flex items-center justify-center">
+<img alt="Cumin Seeds" class="w-3/4 h-3/4 object-cover rounded-full shadow-sm group-hover:scale-105 transition-transform duration-500" data-alt="A close-up, high-resolution shot of earthy brown cumin seeds in a simple, organic-shaped dish. The background is a warm, light surface that complements the seeds' color. The lighting is natural and diffuse, highlighting the shape and texture of individual seeds. The mood is calm, rustic, and premium." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChJDlEC4oQYsuks8xvO6QnlHkoSyw_2Kk6ZvtGinGNUyki4TwrzO1RGRpoonEQJwvTFKE6rZNd-XycOTuWJ3GjLgMQDKmqPh4-BYdr_d-2j1xozQa3toy41iZXYTg6eMEmaobZXaBaVgq7qp-ImewBqE41Rz9mSKG7UFqv-cHcBtrDRvKsfDbXlJQt9mI0Uztyoa7wIzSd389f5cI-8KSlnokr1M4Cwc0NvIje68YdiYxPtmESs7-h0vVGCsAOtna2wvJzpM63s4M"/>
+<div class="absolute top-2 right-2 bg-surface-container-lowest rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined text-outline hover:text-secondary cursor-pointer transition-colors" data-icon="favorite_border">favorite_border</span>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-md text-headline-md text-lg text-on-surface">Roasted Cumin</h3>
+<span class="font-label-lg text-label-lg text-tertiary">Aromatic</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-3">Min. Order: 100g</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="font-headline-md text-headline-md text-lg text-primary">₹ 210 <span class="text-sm font-body-md text-on-surface-variant">/100g</span></span>
+<button aria-label="Add to cart" class="bg-primary-container text-on-primary-container w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<button class="md:hidden mt-8 w-full py-3 rounded-full border border-outline text-on-surface font-label-lg text-label-lg flex items-center justify-center gap-2">
+                View All Spices
+            </button>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full mt-section-gap bg-surface-container-low dark:bg-inverse-surface">
+<div class="flex flex-col md:flex-row justify-between items-center max-w-[1200px] mx-auto px-container-margin-desktop py-section-gap gap-gutter">
+<div class="font-headline-md text-headline-md text-primary mb-6 md:mb-0">
+                Vadi Masala
+            </div>
+<div class="flex flex-wrap justify-center gap-4 font-label-sm text-label-sm">
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Certifications</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Reports</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Policies</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Contact Us</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Privacy</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors opacity-80 hover:opacity-100" href="#">Terms</a>
+</div>
+<div class="text-on-surface-variant font-label-sm text-label-sm mt-6 md:mt-0 opacity-80">
+                © 2024 Vadi Masala. All rights reserved.
+            </div>
+</div>
+</footer>
+</body></html>
