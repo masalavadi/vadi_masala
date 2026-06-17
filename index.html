@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=auth-admin-fix" />
+    <link rel="stylesheet" href="styles.css?v=admin-auth-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   </head>
   <body class="is-customer-site">
@@ -25,7 +25,6 @@
         <button class="nav-link" type="button" data-scroll-target="promise" data-customer-nav>Our Story</button>
         <button class="nav-link" type="button" data-scroll-target="promise" data-customer-nav>Sustainability</button>
         <button class="nav-link" type="button" data-scroll-target="footer" data-customer-nav>Policies</button>
-        <button class="nav-link admin-entry-link" type="button" data-view-link="admin" data-customer-nav>Admin</button>
       </nav>
 
       <div class="header-actions">
@@ -233,57 +232,62 @@
       </section>
 
       <section id="adminView" class="view" aria-labelledby="adminTitle">
-        <section class="admin-hero">
-          <div>
-            <span class="kicker">Private admin workspace</span>
-            <h1 id="adminTitle">Operations Console</h1>
-            <p>Inventory, orders, pricing, and storefront controls for the Vadi Masala team.</p>
-          </div>
-          <button class="primary-button compact" type="button" data-view-link="shop">
-            View Store
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-          </button>
-        </section>
+        <section class="admin-gate" id="adminGate" hidden></section>
 
-        <section class="admin-summary" id="adminSummary" aria-live="polite"></section>
+        <div class="admin-console" id="adminConsole" hidden>
+          <section class="admin-hero admin-panel-header">
+            <div>
+              <span class="kicker">Verified admin workspace</span>
+              <h1 id="adminTitle">Operations Console</h1>
+              <p>Inventory, orders, pricing, and storefront controls for the Vadi Masala team.</p>
+            </div>
+            <div class="admin-header-actions">
+              <span class="admin-session-pill" id="adminIdentity">Admin verified</span>
+              <button class="ghost-button" type="button" data-view-link="shop">View Store</button>
+              <button class="primary-button compact" type="button" data-account-action="logout">Sign Out</button>
+            </div>
+          </section>
 
-        <section class="admin-shell">
-          <div class="admin-tabs" role="tablist" aria-label="Admin sections">
-            <button class="admin-tab is-active" type="button" data-admin-tab="products">Products</button>
-            <button class="admin-tab" type="button" data-admin-tab="orders">Orders</button>
-          </div>
+          <section class="admin-summary" id="adminSummary" aria-live="polite"></section>
 
-          <div class="admin-panel is-active" id="productsPanel" role="tabpanel">
-            <div class="panel-heading">
-              <div>
-                <span class="kicker">Inventory</span>
-                <h2>Product Listing</h2>
+          <section class="admin-shell">
+            <div class="admin-tabs" role="tablist" aria-label="Admin sections">
+              <button class="admin-tab is-active" type="button" data-admin-tab="products">Products</button>
+              <button class="admin-tab" type="button" data-admin-tab="orders">Orders</button>
+            </div>
+
+            <div class="admin-panel is-active" id="productsPanel" role="tabpanel">
+              <div class="panel-heading">
+                <div>
+                  <span class="kicker">Inventory</span>
+                  <h2>Product Listing</h2>
+                </div>
+                <button class="ghost-button" type="button" id="resetProductsButton">Reset Demo Data</button>
               </div>
-              <button class="ghost-button" type="button" id="resetProductsButton">Reset Demo Data</button>
+              <div class="admin-product-list" id="adminProductList"></div>
             </div>
-            <div class="admin-product-list" id="adminProductList"></div>
-          </div>
 
-          <div class="admin-panel" id="ordersPanel" role="tabpanel">
-            <div class="panel-heading">
-              <div>
-                <span class="kicker">Orders</span>
-                <h2>Order Details</h2>
+            <div class="admin-panel" id="ordersPanel" role="tabpanel">
+              <div class="panel-heading">
+                <div>
+                  <span class="kicker">Orders</span>
+                  <h2>Order Details</h2>
+                </div>
+                <select id="orderFilter" aria-label="Filter orders by status">
+                  <option value="all">All orders</option>
+                  <option value="New">New</option>
+                  <option value="Packed">Packed</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
+                </select>
               </div>
-              <select id="orderFilter" aria-label="Filter orders by status">
-                <option value="all">All orders</option>
-                <option value="New">New</option>
-                <option value="Packed">Packed</option>
-                <option value="Shipped">Shipped</option>
-                <option value="Delivered">Delivered</option>
-              </select>
+              <div class="orders-layout">
+                <div class="order-list" id="orderList"></div>
+                <div class="order-details" id="orderDetails"></div>
+              </div>
             </div>
-            <div class="orders-layout">
-              <div class="order-list" id="orderList"></div>
-              <div class="order-details" id="orderDetails"></div>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </section>
     </main>
 
@@ -297,7 +301,6 @@
         <a href="#products">Traceability</a>
         <a href="#products">Privacy Policy</a>
         <a href="#products">Shipping</a>
-        <a href="#admin">Admin Panel</a>
       </nav>
       <p>© 2026 Vadi Masala. Rooted in Tradition, Certified Organic.</p>
     </footer>
@@ -349,6 +352,6 @@
       </div>
     </section>
 
-    <script src="app.js?v=auth-admin-fix" defer></script>
+    <script src="app.js?v=admin-auth-v2" defer></script>
   </body>
 </html>

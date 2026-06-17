@@ -199,6 +199,11 @@ body.is-admin-site .top-nav {
   color: var(--green);
 }
 
+.admin-console[hidden],
+.admin-gate[hidden] {
+  display: none;
+}
+
 body.is-admin-site .nav-link:hover,
 body.is-admin-site .nav-link.is-active {
   color: #ecb846;
@@ -1675,6 +1680,74 @@ body.is-admin-site #orderFilter:focus {
   background: #f0c55a;
   color: #17231c;
   box-shadow: none;
+}
+
+.admin-panel-header {
+  min-height: 280px;
+}
+
+.admin-header-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-session-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 1px solid rgba(248, 251, 241, 0.18);
+  border-radius: 999px;
+  background: rgba(248, 251, 241, 0.12);
+  color: #f8fbf1;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.admin-gate {
+  display: grid;
+  min-height: calc(100vh - var(--header));
+  place-items: center;
+  padding: clamp(28px, 6vw, 72px);
+  background:
+    linear-gradient(120deg, rgba(22, 39, 31, 0.96), rgba(47, 102, 70, 0.92)),
+    var(--admin-deep);
+}
+
+.admin-auth-card {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 460px);
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid rgba(248, 251, 241, 0.16);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.admin-auth-card h1 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: clamp(2rem, 6vw, 3rem);
+}
+
+.admin-auth-card p {
+  margin: 0;
+  color: #52675a;
+  line-height: 1.55;
+}
+
+.admin-gate-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .admin-summary {

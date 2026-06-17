@@ -6,6 +6,8 @@ const CART_KEY = "vadi-cart-v2";
 const ORDERS_KEY = "vadi-orders-v2";
 const ACCOUNTS_KEY = "vadi-accounts-v1";
 const SESSION_KEY = "vadi-session-v1";
+const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
+const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
 const SUPABASE_URL = "https://tbwgopxzymgdgmmkbfop.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRid2dvcHh6eW1nZGdtbWtiZm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTUyNDksImV4cCI6MjA5NzI3MTI0OX0.WqC7IIP-tp2it1L7drjmQd2LJvIJA_wESTXzGIoYRAQ";
@@ -321,7 +323,6 @@ const DEFAULT_ORDERS = [
 let products = normalizeProducts(loadState(PRODUCTS_KEY, DEFAULT_PRODUCTS));
 let accounts = loadState(ACCOUNTS_KEY, []);
 let currentUserId = loadState(SESSION_KEY, null);
-let authMode = "login";
 let cart = loadState(getCartStorageKey(), []);
 let orders = loadState(ORDERS_KEY, DEFAULT_ORDERS);
 if (currentUserId && !accounts.some((account) => account.id === currentUserId)) {
@@ -336,6 +337,11 @@ let detailQty = 1;
 let detailVariantId = null;
 let detailGalleryIndex = 0;
 let isGoogleLoginStarting = false;
+let adminAccess = {
+  status: "unknown",
+  checkedUserId: null,
+  email: "",
+};
 let filters = {
   category: "All",
   query: "",
@@ -364,6 +370,9 @@ const cartBody = document.querySelector("#cartBody");
 const cartCount = document.querySelector("#cartCount");
 const adminSummary = document.querySelector("#adminSummary");
 const adminProductList = document.querySelector("#adminProductList");
+const adminGate = document.querySelector("#adminGate");
+const adminConsole = document.querySelector("#adminConsole");
+const adminIdentity = document.querySelector("#adminIdentity");
 const orderList = document.querySelector("#orderList");
 const orderDetails = document.querySelector("#orderDetails");
 const orderFilter = document.querySelector("#orderFilter");
@@ -421,9 +430,14 @@ function renderAll() {
   renderProductDetail();
   renderRelatedProducts();
   renderAccount();
-  renderAdminSummary();
-  renderAdminProducts();
-  renderOrders();
+  renderAdminAccess();
+  if (isAdminAuthorized()) {
+    renderAdminSummary();
+    renderAdminProducts();
+    renderOrders();
+  } else {
+    clearAdminData();
+  }
 }
 
 function wireGlobalEvents() {
@@ -444,16 +458,6 @@ function wireGlobalEvents() {
     if (accountOpen) {
       event.preventDefault();
       openAccountDrawer();
-      return;
-    }
-
-    const authModeButton = event.target.closest("[data-auth-mode]");
-    if (authModeButton) {
-      if (authModeButton.dataset.authMode !== "login") {
-        showToast("New customers should continue with Google.");
-      }
-      authMode = "login";
-      renderAccount();
       return;
     }
 
@@ -531,6 +535,10 @@ function wireGlobalEvents() {
 
     const orderButton = event.target.closest("[data-order-id]");
     if (orderButton) {
+      if (!isAdminAuthorized()) {
+        showToast("Admin access required.");
+        return;
+      }
       selectedOrderId = orderButton.dataset.orderId;
       renderOrders();
       return;
@@ -538,6 +546,10 @@ function wireGlobalEvents() {
 
     const adminSave = event.target.closest("[data-save-product]");
     if (adminSave) {
+      if (!isAdminAuthorized()) {
+        showToast("Admin access required.");
+        return;
+      }
       saveProductFromAdmin(adminSave.dataset.saveProduct);
       return;
     }
@@ -577,6 +589,10 @@ function wireGlobalEvents() {
   successBackdrop.addEventListener("click", closeSuccessModal);
 
   document.querySelector("#resetProductsButton").addEventListener("click", () => {
+    if (!isAdminAuthorized()) {
+      showToast("Admin access required.");
+      return;
+    }
     products = clone(DEFAULT_PRODUCTS);
     orders = clone(DEFAULT_ORDERS);
     cart = [];
@@ -596,6 +612,12 @@ function wireGlobalEvents() {
   });
 
   adminProductList.addEventListener("change", (event) => {
+    if (!isAdminAuthorized()) {
+      showToast("Admin access required.");
+      event.preventDefault();
+      return;
+    }
+
     const listedToggle = event.target.closest("[data-listed-toggle]");
     if (listedToggle) {
       const product = getProduct(listedToggle.dataset.listedToggle);
@@ -612,9 +634,21 @@ function wireGlobalEvents() {
     }
   });
 
-  orderFilter.addEventListener("change", renderOrders);
+  orderFilter.addEventListener("change", () => {
+    if (!isAdminAuthorized()) {
+      showToast("Admin access required.");
+      return;
+    }
+    renderOrders();
+  });
 
   orderDetails.addEventListener("change", (event) => {
+    if (!isAdminAuthorized()) {
+      showToast("Admin access required.");
+      event.preventDefault();
+      return;
+    }
+
     const statusSelect = event.target.closest("[data-order-status]");
     if (!statusSelect) return;
     const order = orders.find((item) => item.id === statusSelect.dataset.orderStatus);
@@ -629,13 +663,6 @@ function wireGlobalEvents() {
     if (event.target.matches("#checkoutForm")) {
       event.preventDefault();
       placeOrder(new FormData(event.target));
-    }
-  });
-
-  accountBody.addEventListener("submit", (event) => {
-    if (event.target.matches("#authForm")) {
-      event.preventDefault();
-      handleAuthSubmit(new FormData(event.target));
     }
   });
 
@@ -683,6 +710,8 @@ function setView(view, options = {}) {
   if (selectedView === "admin") {
     closeCart();
     closeAccountDrawer();
+    renderAdminAccess();
+    void verifyAdminAccess();
   }
 
   if (!updateHash) {
@@ -1066,8 +1095,8 @@ function renderCart() {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v.01" /><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           Login to Checkout
         </h3>
-        <p>New customers continue with Google. Existing customers can log in to keep carts and orders attached.</p>
-        <button class="primary-button" type="button" data-account-open>Login / Google</button>
+        <p>Continue with Google to keep your cart and orders attached to your account.</p>
+        <button class="primary-button" type="button" data-account-open>Continue with Google</button>
       </div>`
       }
     </div>
@@ -1085,30 +1114,15 @@ function renderAccount() {
   if (!accountBody) return;
 
   if (!currentUser) {
-    authMode = "login";
     accountTitle.textContent = "Login";
     accountBody.innerHTML = `
       <div class="auth-card">
-        <p class="auth-note google-first-note">New customer? Continue with Google.</p>
+        <p class="auth-note google-first-note">Sign in or create an account with Google.</p>
         <button class="google-login-button" type="button" data-google-login ${isGoogleLoginStarting ? "disabled" : ""}>
           <span aria-hidden="true">G</span>
           <strong data-google-label>${isGoogleLoginStarting ? "Opening Google..." : "Continue with Google"}</strong>
         </button>
-        <p class="auth-note">Google opens in this tab. If it still does not open, use the demo customer login below to test checkout.</p>
-        <button class="ghost-button auth-fallback-button" type="button" data-account-action="demo-login">Continue without Google</button>
-        <div class="auth-divider"><span>Existing customer email login</span></div>
-        <form class="auth-form" id="authForm">
-          <div class="field">
-            <label for="authEmail">Email</label>
-            <input id="authEmail" name="email" type="email" autocomplete="email" required />
-          </div>
-          <div class="field">
-            <label for="authPassword">Password</label>
-            <input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="4" required />
-          </div>
-          <button class="primary-button" type="submit">Login</button>
-        </form>
-        <p class="auth-note">Email login is only for existing accounts. New accounts use Google.</p>
+        <p class="auth-note">Google opens in this tab and brings you back after sign-in.</p>
       </div>
     `;
     return;
@@ -1254,12 +1268,14 @@ async function initializeSupabaseSession() {
 
     client.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        resetAdminAccess();
         syncSupabaseAccount(session.user, { mergeGuestCart: true });
         return;
       }
       if (currentUserId?.startsWith("supabase-")) {
         currentUserId = null;
         localStorage.removeItem(SESSION_KEY);
+        resetAdminAccess();
         cart = loadState(getCartStorageKey(), []);
         renderAll();
       }
@@ -1298,9 +1314,9 @@ function cleanAuthUrl() {
   const hashParams = new URLSearchParams(hashParamSource);
   const hashHasAuthParams = SUPABASE_AUTH_RETURN_KEYS.some((key) => hashParams.has(key));
 
-  if (!url.hash || hashHasAuthParams) {
-    url.hash = "shop";
-  }
+  const returnRoute = sessionStorage.getItem(AUTH_RETURN_ROUTE_KEY) || "#shop";
+  sessionStorage.removeItem(AUTH_RETURN_ROUTE_KEY);
+  if (!url.hash || hashHasAuthParams) url.hash = returnRoute;
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -1326,7 +1342,6 @@ function syncSupabaseAccount(user, options = {}) {
       id: accountId,
       name,
       email: user.email || "",
-      password: "",
       phone: metadata.phone || "",
       address: "",
       state: "",
@@ -1346,6 +1361,8 @@ function syncSupabaseAccount(user, options = {}) {
 async function handleGoogleLogin() {
   if (isGoogleLoginStarting) return;
 
+  const returnRoute = document.body.classList.contains("is-admin-site") || location.hash === "#admin" ? "#admin" : "#shop";
+  sessionStorage.setItem(AUTH_RETURN_ROUTE_KEY, returnRoute);
   const redirectTo = getAuthRedirectUrl();
   setGoogleLoginStarting(true);
   showToast("Opening Google sign-in...");
@@ -1353,7 +1370,7 @@ async function handleGoogleLogin() {
   const client = await waitForSupabaseClient();
   if (!client) {
     setGoogleLoginStarting(false);
-    showToast("Google login could not load. Use Continue without Google for now.");
+    showToast("Google login could not load. Please try again.");
     return;
   }
 
@@ -1388,7 +1405,7 @@ async function handleGoogleLogin() {
     showToast("Google login could not create a sign-in link.");
   } catch (error) {
     console.warn("Google login could not start.", error);
-    showToast("Google login could not start. Use Continue without Google for now.");
+    showToast("Google login could not start. Please try again.");
   } finally {
     if (!isRedirecting) setGoogleLoginStarting(false);
   }
@@ -1408,27 +1425,145 @@ function setGoogleLoginStarting(value) {
   });
 }
 
-async function handleSupabaseEmailAuth(email, password) {
-  const client = getSupabaseClient();
-  if (!client) return false;
+function isAdminAuthorized() {
+  return adminAccess.status === "allowed";
+}
 
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if (error) {
-    if ((error.message || "").toLowerCase().includes("invalid login credentials")) {
+function resetAdminAccess() {
+  adminAccess = {
+    status: "unknown",
+    checkedUserId: null,
+    email: "",
+  };
+}
+
+function clearAdminData() {
+  if (adminSummary) adminSummary.innerHTML = "";
+  if (adminProductList) adminProductList.innerHTML = "";
+  if (orderList) orderList.innerHTML = "";
+  if (orderDetails) orderDetails.innerHTML = "";
+}
+
+function renderAdminAccess() {
+  if (!adminGate || !adminConsole) return;
+
+  const currentUser = getCurrentUser();
+  const allowed = isAdminAuthorized();
+  adminGate.hidden = allowed;
+  adminConsole.hidden = !allowed;
+  if (allowed) {
+    adminIdentity.textContent = adminAccess.email ? `Signed in as ${adminAccess.email}` : "Admin verified";
+    adminGate.innerHTML = "";
+    return;
+  }
+
+  if (!currentUser) {
+    adminGate.innerHTML = `
+      <div class="admin-auth-card">
+        <span class="kicker">Admin only</span>
+        <h1>Sign in to continue</h1>
+        <p>This workspace is protected. Use the Vadi Masala admin Google account to access products and orders.</p>
+        <button class="google-login-button" type="button" data-google-login ${isGoogleLoginStarting ? "disabled" : ""}>
+          <span aria-hidden="true">G</span>
+          <strong data-google-label>${isGoogleLoginStarting ? "Opening Google..." : "Continue with Google"}</strong>
+        </button>
+        <button class="text-link" type="button" data-view-link="shop">Back to Store</button>
+      </div>
+    `;
+    return;
+  }
+
+  if (adminAccess.status === "checking") {
+    adminGate.innerHTML = `
+      <div class="admin-auth-card">
+        <span class="kicker">Checking access</span>
+        <h1>Verifying admin session</h1>
+        <p>Please wait while Vadi Masala confirms this Google account.</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (adminAccess.status === "denied") {
+    adminGate.innerHTML = `
+      <div class="admin-auth-card">
+        <span class="kicker">Access denied</span>
+        <h1>This account is not an admin</h1>
+        <p>${escapeHtml(currentUser.email || "This Google account")} is signed in, but it is not allowed to open the Vadi Masala admin workspace.</p>
+        <div class="admin-gate-actions">
+          <button class="primary-button" type="button" data-account-action="logout">Sign Out</button>
+          <button class="text-link" type="button" data-view-link="shop">Back to Store</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  adminGate.innerHTML = `
+    <div class="admin-auth-card">
+      <span class="kicker">Admin only</span>
+      <h1>Admin verification needed</h1>
+      <p>Use the Vadi Masala admin Google account to access products and orders.</p>
+      <button class="primary-button" type="button" data-account-action="logout">Switch Google Account</button>
+    </div>
+  `;
+}
+
+async function verifyAdminAccess() {
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    adminAccess = { status: "unauthenticated", checkedUserId: null, email: "" };
+    renderAdminAccess();
+    clearAdminData();
+    return false;
+  }
+
+  if (adminAccess.checkedUserId === currentUser.id && ["allowed", "denied"].includes(adminAccess.status)) {
+    return isAdminAuthorized();
+  }
+
+  adminAccess = { status: "checking", checkedUserId: currentUser.id, email: currentUser.email || "" };
+  renderAdminAccess();
+  clearAdminData();
+
+  try {
+    const accessToken = await getSupabaseAccessToken();
+    if (!accessToken) {
+      adminAccess = { status: "denied", checkedUserId: currentUser.id, email: currentUser.email || "" };
+      renderAdminAccess();
       return false;
     }
-    showToast(error.message || "Email login failed.");
-    return true;
-  }
 
-  if (data.user) {
-    const account = syncSupabaseAccount(data.user, { mergeGuestCart: true });
-    showToast(`Welcome back, ${account.name}.`);
-    return true;
-  }
+    const response = await fetch(ADMIN_SESSION_ENDPOINT, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.isAdmin) {
+      adminAccess = { status: "denied", checkedUserId: currentUser.id, email: result.email || currentUser.email || "" };
+      renderAdminAccess();
+      clearAdminData();
+      return false;
+    }
 
-  showToast("Check your email to finish signing in.");
-  return true;
+    adminAccess = { status: "allowed", checkedUserId: currentUser.id, email: result.email || currentUser.email || "" };
+    renderAll();
+    return true;
+  } catch (error) {
+    console.warn("Admin verification failed.", error);
+    adminAccess = { status: "denied", checkedUserId: currentUser.id, email: currentUser.email || "" };
+    renderAdminAccess();
+    clearAdminData();
+    return false;
+  }
+}
+
+async function getSupabaseAccessToken() {
+  const client = await waitForSupabaseClient();
+  if (!client) return "";
+  const { data } = await client.auth.getSession();
+  return data.session?.access_token || "";
 }
 
 function renderAdminSummary() {
@@ -1591,29 +1726,6 @@ function closeAccountDrawer() {
   document.body.classList.remove("no-scroll");
 }
 
-async function handleAuthSubmit(formData) {
-  const email = normalizeEmail(formData.get("email"));
-  const password = String(formData.get("password") || "");
-  if (!email || !password) {
-    showToast("Enter your email and password.");
-    return;
-  }
-
-  authMode = "login";
-
-  if (await handleSupabaseEmailAuth(email, password)) {
-    return;
-  }
-
-  const account = accounts.find((item) => item.email === email && item.password === password);
-  if (!account) {
-    showToast("Email login is for existing accounts. New customers should continue with Google.");
-    return;
-  }
-  signInAccount(account, { mergeGuestCart: true });
-  showToast(`Welcome back, ${account.name}.`);
-}
-
 async function handleAccountAction(action) {
   if (action === "logout") {
     const client = getSupabaseClient();
@@ -1623,15 +1735,10 @@ async function handleAccountAction(action) {
     saveActiveCart();
     currentUserId = null;
     localStorage.removeItem(SESSION_KEY);
-    authMode = "login";
+    resetAdminAccess();
     cart = loadState(getCartStorageKey(), []);
     renderAll();
     showToast("Signed out.");
-    return;
-  }
-
-  if (action === "demo-login") {
-    signInDemoCustomer();
     return;
   }
 
@@ -1650,34 +1757,13 @@ async function handleAccountAction(action) {
 function signInAccount(account, options = {}) {
   const { mergeGuestCart = false } = options;
   const guestCart = mergeGuestCart && !currentUserId ? clone(cart) : [];
+  if (currentUserId !== account.id) resetAdminAccess();
   saveActiveCart();
   currentUserId = account.id;
   saveState(SESSION_KEY, currentUserId);
   cart = mergeCartItems(loadState(getCartStorageKey(), []), guestCart);
   saveActiveCart();
   renderAll();
-}
-
-function signInDemoCustomer() {
-  let account = accounts.find((item) => item.id === "demo-customer" || item.email === "customer@vadimasala.local");
-  if (!account) {
-    account = {
-      id: "demo-customer",
-      name: "Demo Customer",
-      email: "customer@vadimasala.local",
-      password: "",
-      phone: "",
-      address: "",
-      state: "",
-      provider: "local-demo",
-      createdAt: new Date().toISOString(),
-    };
-    accounts.push(account);
-    saveState(ACCOUNTS_KEY, accounts);
-  }
-
-  signInAccount(account, { mergeGuestCart: true });
-  showToast(`Welcome, ${account.name}.`);
 }
 
 function openCart() {
