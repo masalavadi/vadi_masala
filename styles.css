@@ -5505,21 +5505,14 @@ body.is-customer-site .product-card img {
 }
 
 /* Brand assets from supplied artwork */
-body.is-customer-site .brand {
-  display: flex;
-  align-items: center;
-  width: max-content;
-  max-width: 220px;
-}
-
-body.is-customer-site .brand-logo {
+.brand-logo {
   display: block;
   width: 166px;
   max-width: 100%;
   height: auto;
 }
 
-body.is-customer-site .brand-copy {
+.brand-copy {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -5528,6 +5521,36 @@ body.is-customer-site .brand-copy {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+
+body.is-customer-site .brand {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: 220px;
+}
+
+body.is-customer-site .brand-logo {
+  width: 166px;
+}
+
+body.is-admin-site .brand {
+  display: inline-flex;
+  width: max-content;
+  max-width: min(240px, 70vw);
+  padding: 6px 14px;
+  border: 1px solid rgba(240, 197, 90, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 249, 237, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+body.is-admin-site .brand-logo {
+  width: 150px;
+}
+
+body.is-admin-site .top-nav {
+  display: none;
 }
 
 body.is-customer-site .hero {
