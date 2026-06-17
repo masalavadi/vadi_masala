@@ -4895,18 +4895,20 @@ body {
   }
 
   body.is-customer-site .site-header {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
+    grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+    align-items: center;
     min-height: 0;
-    gap: 8px;
+    column-gap: 10px;
+    row-gap: 8px;
     padding: 10px 14px 12px;
   }
 
   body.is-customer-site .brand {
     order: 1;
-    width: 100%;
+    width: max-content;
+    max-width: 100%;
     min-width: 0;
-    min-height: 34px;
+    min-height: 40px;
   }
 
   body.is-customer-site .brand-name {
@@ -4919,12 +4921,13 @@ body {
 
   body.is-customer-site .header-actions {
     display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: minmax(0, 1fr) 40px 40px;
-    order: 2;
+    grid-column: 2;
+    grid-template-columns: minmax(0, 1fr) 38px 38px;
+    order: 1;
     width: 100%;
-    gap: 8px;
+    gap: 6px;
     justify-self: stretch;
+    align-items: center;
   }
 
   body.is-customer-site .nav-search {
@@ -4935,8 +4938,8 @@ body {
   }
 
   body.is-customer-site .icon-button {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
   }
 
   body.is-customer-site #cartCount {
