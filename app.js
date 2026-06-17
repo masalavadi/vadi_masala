@@ -8,6 +8,9 @@ const ACCOUNTS_KEY = "vadi-accounts-v1";
 const SESSION_KEY = "vadi-session-v1";
 const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
 const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
+const MAX_PRODUCT_IMAGE_DIMENSION = 900;
+const MAX_STORED_IMAGE_LENGTH = 450000;
+const PRODUCT_IMAGE_QUALITY = 0.78;
 const SUPABASE_URL = "https://tbwgopxzymgdgmmkbfop.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRid2dvcHh6eW1nZGdtbWtiZm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTUyNDksImV4cCI6MjA5NzI3MTI0OX0.WqC7IIP-tp2it1L7drjmQd2LJvIJA_wESTXzGIoYRAQ";
@@ -385,6 +388,7 @@ const successOrderId = document.querySelector("#successOrderId");
 document.addEventListener("DOMContentLoaded", async () => {
   wireGlobalEvents();
   await initializeSupabaseSession();
+  await compactStoredProductImages();
   renderAll();
   handleHashRoute();
 });
@@ -405,7 +409,13 @@ function clone(value) {
 }
 
 function saveState(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.warn(`Could not save ${key}.`, error);
+    return false;
+  }
 }
 
 function normalizeProducts(sourceProducts) {
@@ -1939,27 +1949,99 @@ function saveProductFromAdmin(productId) {
   product.description = description || product.description;
   product.origin = origin || product.origin;
 
-  saveState(PRODUCTS_KEY, products);
+  if (!saveState(PRODUCTS_KEY, products)) {
+    showToast("Could not save product changes. Try a smaller product image.");
+    return;
+  }
   renderAll();
   showToast(`${product.name} updated.`);
 }
 
-function uploadProductImage(productId, file) {
+async function uploadProductImage(productId, file) {
   if (!file.type.startsWith("image/")) {
     showToast("Please choose an image file.");
     return;
   }
 
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
+  try {
+    showToast("Optimizing product image...");
+    const imageData = await resizeImageFile(file);
     const product = getProduct(productId);
     if (!product) return;
-    product.image = String(reader.result);
-    saveState(PRODUCTS_KEY, products);
+    product.image = imageData;
+    if (!saveState(PRODUCTS_KEY, products)) {
+      showToast("Image is still too large to save. Please choose a smaller image.");
+      return;
+    }
     renderAll();
     showToast(`${product.name} image updated.`);
+  } catch (error) {
+    console.warn("Product image upload failed.", error);
+    showToast("Image upload failed. Please try another image.");
+  }
+}
+
+async function compactStoredProductImages() {
+  const oversizedProducts = products.filter((product) => isOversizedStoredImage(product.image));
+  if (!oversizedProducts.length) return;
+
+  let changed = false;
+  for (const product of oversizedProducts) {
+    try {
+      product.image = await resizeImageSource(product.image);
+      changed = true;
+    } catch (error) {
+      console.warn(`Could not optimize stored image for ${product.id}.`, error);
+    }
+  }
+
+  if (changed && saveState(PRODUCTS_KEY, products)) {
+    showToast("Optimized saved product images.");
+  }
+}
+
+function isOversizedStoredImage(source) {
+  return typeof source === "string" && source.startsWith("data:image/") && source.length > MAX_STORED_IMAGE_LENGTH;
+}
+
+function resizeImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", async () => {
+      try {
+        resolve(await resizeImageSource(String(reader.result || "")));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    reader.addEventListener("error", () => reject(reader.error || new Error("Could not read image file.")));
+    reader.readAsDataURL(file);
   });
-  reader.readAsDataURL(file);
+}
+
+function resizeImageSource(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => {
+      const scale = Math.min(1, MAX_PRODUCT_IMAGE_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+      const width = Math.max(1, Math.round(image.naturalWidth * scale));
+      const height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Canvas is not available."));
+        return;
+      }
+      context.fillStyle = "#fffaf2";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", PRODUCT_IMAGE_QUALITY));
+    });
+    image.addEventListener("error", () => reject(new Error("Could not load image.")));
+    image.src = source;
+  });
 }
 
 function getProduct(productId) {
