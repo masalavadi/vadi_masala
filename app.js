@@ -8,12 +8,10 @@ const ACCOUNTS_KEY = "vadi-accounts-v1";
 const SESSION_KEY = "vadi-session-v1";
 const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
 const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
+const PUBLIC_CONFIG_ENDPOINT = "/api/public-config";
 const MAX_PRODUCT_IMAGE_DIMENSION = 900;
 const MAX_STORED_IMAGE_LENGTH = 450000;
 const PRODUCT_IMAGE_QUALITY = 0.78;
-const SUPABASE_URL = "https://tbwgopxzymgdgmmkbfop.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRid2dvcHh6eW1nZGdtbWtiZm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTUyNDksImV4cCI6MjA5NzI3MTI0OX0.WqC7IIP-tp2it1L7drjmQd2LJvIJA_wESTXzGIoYRAQ";
 const SUPABASE_AUTH_RETURN_KEYS = [
   "code",
   "state",
@@ -342,6 +340,7 @@ let detailQty = 1;
 let detailVariantId = null;
 let detailGalleryIndex = 0;
 let isGoogleLoginStarting = false;
+let supabaseConfig = null;
 let productCatalogSource = "local";
 let productCatalogRemoteError = "";
 let adminAccess = {
@@ -391,6 +390,7 @@ const successOrderId = document.querySelector("#successOrderId");
 
 document.addEventListener("DOMContentLoaded", async () => {
   wireGlobalEvents();
+  await initializeSupabaseConfig();
   await initializeSupabaseSession();
   await initializeProductCatalog();
   renderAll();
@@ -1230,8 +1230,9 @@ function renderAccountOrder(order) {
 
 function getSupabaseClient() {
   if (!window.supabase?.createClient) return null;
+  if (!supabaseConfig?.supabaseUrl || !supabaseConfig?.supabaseAnonKey) return null;
   if (!window.vadiSupabaseClient) {
-    window.vadiSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    window.vadiSupabaseClient = window.supabase.createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
         detectSessionInUrl: false,
@@ -1243,7 +1244,27 @@ function getSupabaseClient() {
   return window.vadiSupabaseClient;
 }
 
+async function initializeSupabaseConfig() {
+  if (supabaseConfig) return supabaseConfig;
+
+  try {
+    const response = await fetch(PUBLIC_CONFIG_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) throw new Error("Public config endpoint failed.");
+    const config = await response.json();
+    if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error("Supabase public config is incomplete.");
+    supabaseConfig = {
+      supabaseUrl: config.supabaseUrl,
+      supabaseAnonKey: config.supabaseAnonKey,
+    };
+    return supabaseConfig;
+  } catch (error) {
+    console.warn("Supabase public config could not be loaded.", error);
+    return null;
+  }
+}
+
 async function waitForSupabaseClient() {
+  if (!supabaseConfig) await initializeSupabaseConfig();
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const client = getSupabaseClient();
     if (client) return client;

@@ -1,7 +1,3 @@
-const SUPABASE_URL = "https://tbwgopxzymgdgmmkbfop.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRid2dvcHh6eW1nZGdtbWtiZm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTUyNDksImV4cCI6MjA5NzI3MTI0OX0.WqC7IIP-tp2it1L7drjmQd2LJvIJA_wESTXzGIoYRAQ";
-
 function getAllowedEmails() {
   return new Set(
     String(process.env.ADMIN_EMAILS || "")
@@ -23,6 +19,13 @@ module.exports = async function handler(request, response) {
     return;
   }
 
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    sendJson(response, 500, { isAdmin: false, error: "Supabase auth is not configured" });
+    return;
+  }
+
   const token = String(request.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) {
     sendJson(response, 401, { isAdmin: false, error: "Missing auth token" });
@@ -35,9 +38,9 @@ module.exports = async function handler(request, response) {
     return;
   }
 
-  const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+  const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: {
-      apikey: SUPABASE_ANON_KEY,
+      apikey: supabaseAnonKey,
       Authorization: `Bearer ${token}`,
     },
   });
