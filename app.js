@@ -28,6 +28,8 @@ const SUPABASE_AUTH_RETURN_KEYS = [
   "error_code",
   "error_description",
 ];
+const SUPABASE_PRODUCTS_TABLE = "products";
+const SUPABASE_PRODUCT_IMAGES_BUCKET = "product-images";
 
 function variants(...items) {
   return items.map(([id, label, price]) => ({ id, label, price }));
@@ -340,6 +342,8 @@ let detailQty = 1;
 let detailVariantId = null;
 let detailGalleryIndex = 0;
 let isGoogleLoginStarting = false;
+let productCatalogSource = "local";
+let productCatalogRemoteError = "";
 let adminAccess = {
   status: "unknown",
   checkedUserId: null,
@@ -388,7 +392,7 @@ const successOrderId = document.querySelector("#successOrderId");
 document.addEventListener("DOMContentLoaded", async () => {
   wireGlobalEvents();
   await initializeSupabaseSession();
-  await compactStoredProductImages();
+  await initializeProductCatalog();
   renderAll();
   handleHashRoute();
 });
@@ -419,8 +423,9 @@ function saveState(key, value) {
 }
 
 function normalizeProducts(sourceProducts) {
+  const safeProducts = Array.isArray(sourceProducts) && sourceProducts.length ? sourceProducts : DEFAULT_PRODUCTS;
   const defaultsById = new Map(DEFAULT_PRODUCTS.map((product) => [product.id, product]));
-  return sourceProducts.map((product) => {
+  return safeProducts.map((product) => {
     const fallback = defaultsById.get(product.id) ?? product;
     const normalized = { ...fallback, ...product };
     normalized.variants = product.variants?.length ? product.variants : fallback.variants;
@@ -431,6 +436,17 @@ function normalizeProducts(sourceProducts) {
     normalized.harvest = product.harvest || fallback.harvest || "Small-batch selected";
     return normalized;
   });
+}
+
+function mergeProductsWithDefaults(sourceProducts) {
+  const safeProducts = Array.isArray(sourceProducts) ? sourceProducts.filter((product) => product?.id) : [];
+  const productsById = new Map(safeProducts.map((product) => [product.id, product]));
+  const defaultIds = new Set(DEFAULT_PRODUCTS.map((product) => product.id));
+  const mergedProducts = DEFAULT_PRODUCTS.map((product) => productsById.get(product.id) ?? product);
+  safeProducts.forEach((product) => {
+    if (!defaultIds.has(product.id)) mergedProducts.push(product);
+  });
+  return mergedProducts;
 }
 
 function renderAll() {
@@ -560,7 +576,7 @@ function wireGlobalEvents() {
         showToast("Admin access required.");
         return;
       }
-      saveProductFromAdmin(adminSave.dataset.saveProduct);
+      void saveProductFromAdmin(adminSave.dataset.saveProduct);
       return;
     }
 
@@ -598,7 +614,7 @@ function wireGlobalEvents() {
   accountBackdrop.addEventListener("click", closeAccountDrawer);
   successBackdrop.addEventListener("click", closeSuccessModal);
 
-  document.querySelector("#resetProductsButton").addEventListener("click", () => {
+  document.querySelector("#resetProductsButton").addEventListener("click", async () => {
     if (!isAdminAuthorized()) {
       showToast("Admin access required.");
       return;
@@ -610,18 +626,18 @@ function wireGlobalEvents() {
     currentProductId = products.find((product) => product.listed)?.id ?? products[0]?.id;
     detailQty = 1;
     detailVariantId = null;
-    saveState(PRODUCTS_KEY, products);
+    const productSave = await saveProductCatalog({ allProducts: true });
     saveState(ORDERS_KEY, orders);
     saveActiveCart();
     renderAll();
-    showToast("Demo data has been reset.");
+    showToast(productSave.remoteSaved ? "Product demo data reset for everyone." : "Demo data reset on this device only.");
   });
 
   document.querySelectorAll("[data-admin-tab]").forEach((tab) => {
     tab.addEventListener("click", () => setAdminTab(tab.dataset.adminTab));
   });
 
-  adminProductList.addEventListener("change", (event) => {
+  adminProductList.addEventListener("change", async (event) => {
     if (!isAdminAuthorized()) {
       showToast("Admin access required.");
       event.preventDefault();
@@ -631,16 +647,21 @@ function wireGlobalEvents() {
     const listedToggle = event.target.closest("[data-listed-toggle]");
     if (listedToggle) {
       const product = getProduct(listedToggle.dataset.listedToggle);
+      if (!product) return;
       product.listed = listedToggle.checked;
-      saveState(PRODUCTS_KEY, products);
+      const result = await saveProductCatalog({ product });
       renderAll();
-      showToast(`${product.name} is now ${product.listed ? "listed" : "unlisted"}.`);
+      showToast(
+        result.remoteSaved
+          ? `${product.name} is now ${product.listed ? "listed" : "unlisted"} for everyone.`
+          : `${product.name} changed on this device only.`,
+      );
       return;
     }
 
     const fileInput = event.target.closest("[data-image-upload]");
     if (fileInput && fileInput.files?.[0]) {
-      uploadProductImage(fileInput.dataset.imageUpload, fileInput.files[0]);
+      void uploadProductImage(fileInput.dataset.imageUpload, fileInput.files[0]);
     }
   });
 
@@ -1231,6 +1252,149 @@ async function waitForSupabaseClient() {
   return null;
 }
 
+async function initializeProductCatalog() {
+  const remoteLoaded = await loadProductsFromSupabase();
+  await compactStoredProductImages();
+  if (!remoteLoaded) saveState(PRODUCTS_KEY, products);
+}
+
+async function loadProductsFromSupabase() {
+  const client = await waitForSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { data, error } = await client
+      .from(SUPABASE_PRODUCTS_TABLE)
+      .select("id,data,updated_at")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+
+    const remoteProducts = (data || []).map(productFromSupabaseRow).filter(Boolean);
+    if (!remoteProducts.length) {
+      productCatalogSource = "supabase-empty";
+      productCatalogRemoteError = "";
+      return false;
+    }
+
+    products = normalizeProducts(mergeProductsWithDefaults(remoteProducts));
+    currentProductId =
+      products.find((product) => product.id === currentProductId)?.id ??
+      products.find((product) => product.listed)?.id ??
+      products[0]?.id;
+    productCatalogSource = "supabase";
+    productCatalogRemoteError = "";
+    saveState(PRODUCTS_KEY, products);
+    return true;
+  } catch (error) {
+    productCatalogSource = "local";
+    productCatalogRemoteError = getSupabaseErrorMessage(error);
+    console.warn("Shared product catalog could not be loaded.", error);
+    return false;
+  }
+}
+
+function productFromSupabaseRow(row) {
+  const data = row?.data && typeof row.data === "object" ? row.data : row;
+  const id = row?.id || data?.id;
+  return id ? { ...data, id } : null;
+}
+
+async function seedRemoteProductCatalogIfEmpty() {
+  if (productCatalogSource !== "supabase-empty") return false;
+
+  const result = await saveProductCatalog({ allProducts: true });
+  if (result.remoteSaved) {
+    showToast("Product catalog is now shared for everyone.");
+    return true;
+  }
+
+  showToast("Set up Supabase products and storage to save globally.");
+  return false;
+}
+
+async function saveProductCatalog({ product = null, allProducts = false } = {}) {
+  let localSaved = saveState(PRODUCTS_KEY, products);
+  const targetProducts = allProducts || !product ? products : [product];
+
+  try {
+    await upsertProductsToSupabase(targetProducts);
+    productCatalogSource = "supabase";
+    productCatalogRemoteError = "";
+    localSaved = saveState(PRODUCTS_KEY, products);
+    return { localSaved, remoteSaved: true, error: null };
+  } catch (error) {
+    productCatalogSource = productCatalogSource === "supabase" ? "supabase" : "local";
+    productCatalogRemoteError = getSupabaseErrorMessage(error);
+    console.warn("Shared product catalog could not be saved.", error);
+    return { localSaved, remoteSaved: false, error };
+  }
+}
+
+async function upsertProductsToSupabase(productList) {
+  const client = await waitForSupabaseClient();
+  if (!client) throw new Error("Supabase client did not load.");
+
+  const updatedAt = new Date().toISOString();
+  const rows = [];
+  for (const product of productList) {
+    const remoteProduct = await prepareProductForRemote(product);
+    rows.push({
+      id: remoteProduct.id,
+      data: remoteProduct,
+      updated_at: updatedAt,
+    });
+  }
+
+  const { error } = await client.from(SUPABASE_PRODUCTS_TABLE).upsert(rows, { onConflict: "id" });
+  if (error) throw error;
+}
+
+async function prepareProductForRemote(product) {
+  const remoteProduct = clone(product);
+  if (isDataImage(remoteProduct.image)) {
+    remoteProduct.image = await uploadDataUrlToSupabase(remoteProduct.id, remoteProduct.image);
+    product.image = remoteProduct.image;
+  }
+  return remoteProduct;
+}
+
+async function uploadDataUrlToSupabase(productId, dataUrl) {
+  const client = await waitForSupabaseClient();
+  if (!client) throw new Error("Supabase client did not load.");
+
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error("Could not prepare image for upload.");
+  const blob = await response.blob();
+  const contentType = blob.type || dataUrl.match(/^data:([^;]+)/)?.[1] || "image/jpeg";
+  const extension = getImageExtension(contentType);
+  const path = `products/${productId}-${Date.now()}.${extension}`;
+
+  const { error } = await client.storage.from(SUPABASE_PRODUCT_IMAGES_BUCKET).upload(path, blob, {
+    cacheControl: "31536000",
+    contentType,
+    upsert: false,
+  });
+  if (error) throw error;
+
+  const { data } = client.storage.from(SUPABASE_PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error("Supabase did not return a public image URL.");
+  return data.publicUrl;
+}
+
+function getImageExtension(contentType) {
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("webp")) return "webp";
+  return "jpg";
+}
+
+function isDataImage(source) {
+  return typeof source === "string" && source.startsWith("data:image/");
+}
+
+function getSupabaseErrorMessage(error) {
+  return error?.message || error?.error_description || "Supabase catalog is not configured.";
+}
+
 async function initializeSupabaseSession() {
   const client = await waitForSupabaseClient();
   if (!client) return;
@@ -1558,6 +1722,7 @@ async function verifyAdminAccess() {
     }
 
     adminAccess = { status: "allowed", checkedUserId: currentUser.id, email: result.email || currentUser.email || "" };
+    await seedRemoteProductCatalogIfEmpty();
     renderAll();
     return true;
   } catch (error) {
@@ -1925,7 +2090,7 @@ function placeOrder(formData) {
   openSuccessModal(order.id);
 }
 
-function saveProductFromAdmin(productId) {
+async function saveProductFromAdmin(productId) {
   const card = adminProductList.querySelector(`[data-admin-product="${productId}"]`);
   const product = getProduct(productId);
   if (!card || !product) return;
@@ -1949,12 +2114,14 @@ function saveProductFromAdmin(productId) {
   product.description = description || product.description;
   product.origin = origin || product.origin;
 
-  if (!saveState(PRODUCTS_KEY, products)) {
+  const result = await saveProductCatalog({ product });
+  if (!result.localSaved && !result.remoteSaved) {
     showToast("Could not save product changes. Try a smaller product image.");
     return;
   }
+
   renderAll();
-  showToast(`${product.name} updated.`);
+  showToast(result.remoteSaved ? `${product.name} updated for everyone.` : `${product.name} saved on this device only.`);
 }
 
 async function uploadProductImage(productId, file) {
@@ -1963,18 +2130,32 @@ async function uploadProductImage(productId, file) {
     return;
   }
 
+  const product = getProduct(productId);
+  if (!product) return;
+
   try {
     showToast("Optimizing product image...");
     const imageData = await resizeImageFile(file);
-    const product = getProduct(productId);
-    if (!product) return;
-    product.image = imageData;
-    if (!saveState(PRODUCTS_KEY, products)) {
-      showToast("Image is still too large to save. Please choose a smaller image.");
+
+    try {
+      showToast("Uploading product image...");
+      product.image = await uploadDataUrlToSupabase(product.id, imageData);
+    } catch (uploadError) {
+      productCatalogRemoteError = getSupabaseErrorMessage(uploadError);
+      console.warn("Supabase product image upload failed.", uploadError);
+      product.image = imageData;
+      if (!saveState(PRODUCTS_KEY, products)) {
+        showToast("Image is still too large to save. Please choose a smaller image.");
+        return;
+      }
+      renderAll();
+      showToast("Image saved on this device only. Set up Supabase Storage to make it universal.");
       return;
     }
+
+    const result = await saveProductCatalog({ product });
     renderAll();
-    showToast(`${product.name} image updated.`);
+    showToast(result.remoteSaved ? `${product.name} image updated for everyone.` : `${product.name} image saved on this device only.`);
   } catch (error) {
     console.warn("Product image upload failed.", error);
     showToast("Image upload failed. Please try another image.");
