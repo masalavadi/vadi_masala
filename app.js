@@ -10,7 +10,6 @@ const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
 const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
 const PUBLIC_CONFIG_ENDPOINT = "/api/public-config";
 const MAX_PRODUCT_IMAGE_DIMENSION = 900;
-const MAX_STORED_IMAGE_LENGTH = 450000;
 const PRODUCT_IMAGE_QUALITY = 0.78;
 const SUPABASE_AUTH_RETURN_KEYS = [
   "code",
@@ -619,6 +618,13 @@ function wireGlobalEvents() {
       showToast("Admin access required.");
       return;
     }
+    const previousProducts = clone(products);
+    const previousOrders = clone(orders);
+    const previousCart = clone(cart);
+    const previousSelectedOrderId = selectedOrderId;
+    const previousProductId = currentProductId;
+    const previousDetailQty = detailQty;
+    const previousDetailVariantId = detailVariantId;
     products = clone(DEFAULT_PRODUCTS);
     orders = clone(DEFAULT_ORDERS);
     cart = [];
@@ -627,10 +633,22 @@ function wireGlobalEvents() {
     detailQty = 1;
     detailVariantId = null;
     const productSave = await saveProductCatalog({ allProducts: true });
+    if (!productSave.remoteSaved) {
+      products = previousProducts;
+      orders = previousOrders;
+      cart = previousCart;
+      selectedOrderId = previousSelectedOrderId;
+      currentProductId = previousProductId;
+      detailQty = previousDetailQty;
+      detailVariantId = previousDetailVariantId;
+      renderAll();
+      showToast("Could not reset globally. Set up Supabase products first.");
+      return;
+    }
     saveState(ORDERS_KEY, orders);
     saveActiveCart();
     renderAll();
-    showToast(productSave.remoteSaved ? "Product demo data reset for everyone." : "Demo data reset on this device only.");
+    showToast("Product demo data reset for everyone.");
   });
 
   document.querySelectorAll("[data-admin-tab]").forEach((tab) => {
@@ -648,14 +666,17 @@ function wireGlobalEvents() {
     if (listedToggle) {
       const product = getProduct(listedToggle.dataset.listedToggle);
       if (!product) return;
+      const previousListed = product.listed;
       product.listed = listedToggle.checked;
       const result = await saveProductCatalog({ product });
+      if (!result.remoteSaved) {
+        product.listed = previousListed;
+        renderAll();
+        showToast("Could not save globally. Set up Supabase products first.");
+        return;
+      }
       renderAll();
-      showToast(
-        result.remoteSaved
-          ? `${product.name} is now ${product.listed ? "listed" : "unlisted"} for everyone.`
-          : `${product.name} changed on this device only.`,
-      );
+      showToast(`${product.name} is now ${product.listed ? "listed" : "unlisted"} for everyone.`);
       return;
     }
 
@@ -886,6 +907,7 @@ function renderProductDetail() {
   const selectedVariant = getVariant(product, detailVariantId) ?? getDefaultVariant(product);
   detailVariantId = selectedVariant.id;
   const gallery = getProductGallery(product);
+  detailGalleryIndex = Math.min(detailGalleryIndex, Math.max(gallery.length - 1, 0));
   const activeImage = gallery[detailGalleryIndex] ?? gallery[0];
   const subtotal = selectedVariant.price * detailQty;
   const remaining = Math.max(MIN_ORDER_VALUE - subtotal, 0);
@@ -909,7 +931,9 @@ function renderProductDetail() {
             ${escapeHtml(product.badge)}
           </span>
         </div>
-        <div class="gallery-thumbs" aria-label="Product image gallery">
+        ${
+          gallery.length > 1
+            ? `<div class="gallery-thumbs" aria-label="Product image gallery">
           ${gallery
             .map(
               (image, index) => `
@@ -919,7 +943,9 @@ function renderProductDetail() {
               `,
             )
             .join("")}
-        </div>
+        </div>`
+            : ""
+        }
       </div>
 
       <div class="product-buybox">
@@ -1275,8 +1301,11 @@ async function waitForSupabaseClient() {
 
 async function initializeProductCatalog() {
   const remoteLoaded = await loadProductsFromSupabase();
-  await compactStoredProductImages();
+  const removedLocalImages = removeLocalOnlyProductImages();
   if (!remoteLoaded) saveState(PRODUCTS_KEY, products);
+  if (removedLocalImages && window.location.hash === "#admin") {
+    showToast("Removed local-only product images. Upload again after Supabase Storage is ready.");
+  }
 }
 
 async function loadProductsFromSupabase() {
@@ -1334,20 +1363,19 @@ async function seedRemoteProductCatalogIfEmpty() {
 }
 
 async function saveProductCatalog({ product = null, allProducts = false } = {}) {
-  let localSaved = saveState(PRODUCTS_KEY, products);
   const targetProducts = allProducts || !product ? products : [product];
 
   try {
     await upsertProductsToSupabase(targetProducts);
     productCatalogSource = "supabase";
     productCatalogRemoteError = "";
-    localSaved = saveState(PRODUCTS_KEY, products);
+    const localSaved = saveState(PRODUCTS_KEY, products);
     return { localSaved, remoteSaved: true, error: null };
   } catch (error) {
     productCatalogSource = productCatalogSource === "supabase" ? "supabase" : "local";
     productCatalogRemoteError = getSupabaseErrorMessage(error);
     console.warn("Shared product catalog could not be saved.", error);
-    return { localSaved, remoteSaved: false, error };
+    return { localSaved: false, remoteSaved: false, error };
   }
 }
 
@@ -1410,6 +1438,32 @@ function getImageExtension(contentType) {
 
 function isDataImage(source) {
   return typeof source === "string" && source.startsWith("data:image/");
+}
+
+function removeLocalOnlyProductImages() {
+  let changed = false;
+
+  products.forEach((product) => {
+    if (isDataImage(product.image)) {
+      product.image = getDefaultProductImage(product.id);
+      changed = true;
+    }
+
+    if (Array.isArray(product.gallery)) {
+      const remoteGallery = product.gallery.filter((image) => image && !isDataImage(image));
+      if (remoteGallery.length !== product.gallery.length) {
+        product.gallery = remoteGallery;
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) saveState(PRODUCTS_KEY, products);
+  return changed;
+}
+
+function getDefaultProductImage(productId) {
+  return DEFAULT_PRODUCTS.find((product) => product.id === productId)?.image || "";
 }
 
 function getSupabaseErrorMessage(error) {
@@ -2116,6 +2170,8 @@ async function saveProductFromAdmin(productId) {
   const product = getProduct(productId);
   if (!card || !product) return;
 
+  const productIndex = products.findIndex((item) => item.id === productId);
+  const originalProduct = clone(product);
   const defaultVariant = getDefaultVariant(product);
   const price = Number(card.querySelector('[data-product-input="price"]').value);
   const stock = Number(card.querySelector('[data-product-input="stock"]').value);
@@ -2136,13 +2192,15 @@ async function saveProductFromAdmin(productId) {
   product.origin = origin || product.origin;
 
   const result = await saveProductCatalog({ product });
-  if (!result.localSaved && !result.remoteSaved) {
-    showToast("Could not save product changes. Try a smaller product image.");
+  if (!result.remoteSaved) {
+    if (productIndex >= 0) products[productIndex] = originalProduct;
+    renderAll();
+    showToast("Could not save globally. Set up Supabase products first.");
     return;
   }
 
   renderAll();
-  showToast(result.remoteSaved ? `${product.name} updated for everyone.` : `${product.name} saved on this device only.`);
+  showToast(`${product.name} updated for everyone.`);
 }
 
 async function uploadProductImage(productId, file) {
@@ -2153,57 +2211,30 @@ async function uploadProductImage(productId, file) {
 
   const product = getProduct(productId);
   if (!product) return;
+  const originalImage = product.image;
 
   try {
     showToast("Optimizing product image...");
     const imageData = await resizeImageFile(file);
 
-    try {
-      showToast("Uploading product image...");
-      product.image = await uploadDataUrlToSupabase(product.id, imageData);
-    } catch (uploadError) {
-      productCatalogRemoteError = getSupabaseErrorMessage(uploadError);
-      console.warn("Supabase product image upload failed.", uploadError);
-      product.image = imageData;
-      if (!saveState(PRODUCTS_KEY, products)) {
-        showToast("Image is still too large to save. Please choose a smaller image.");
-        return;
-      }
+    showToast("Uploading product image...");
+    product.image = await uploadDataUrlToSupabase(product.id, imageData);
+    const result = await saveProductCatalog({ product });
+    if (!result.remoteSaved) {
+      product.image = originalImage;
       renderAll();
-      showToast("Image saved on this device only. Set up Supabase Storage to make it universal.");
+      showToast("Image was not saved. Set up Supabase products first.");
       return;
     }
 
-    const result = await saveProductCatalog({ product });
     renderAll();
-    showToast(result.remoteSaved ? `${product.name} image updated for everyone.` : `${product.name} image saved on this device only.`);
+    showToast(`${product.name} image updated for everyone.`);
   } catch (error) {
+    product.image = originalImage;
+    renderAll();
     console.warn("Product image upload failed.", error);
-    showToast("Image upload failed. Please try another image.");
+    showToast("Image upload failed. Set up Supabase Storage before uploading.");
   }
-}
-
-async function compactStoredProductImages() {
-  const oversizedProducts = products.filter((product) => isOversizedStoredImage(product.image));
-  if (!oversizedProducts.length) return;
-
-  let changed = false;
-  for (const product of oversizedProducts) {
-    try {
-      product.image = await resizeImageSource(product.image);
-      changed = true;
-    } catch (error) {
-      console.warn(`Could not optimize stored image for ${product.id}.`, error);
-    }
-  }
-
-  if (changed && saveState(PRODUCTS_KEY, products)) {
-    showToast("Optimized saved product images.");
-  }
-}
-
-function isOversizedStoredImage(source) {
-  return typeof source === "string" && source.startsWith("data:image/") && source.length > MAX_STORED_IMAGE_LENGTH;
 }
 
 function resizeImageFile(file) {
@@ -2259,12 +2290,9 @@ function getVariant(product, variantId) {
 }
 
 function getProductGallery(product) {
-  const relatedImages = products
-    .filter((item) => item.listed && item.id !== product.id)
-    .sort((a, b) => Number(b.category === product.category) - Number(a.category === product.category))
-    .slice(0, 2)
-    .map((item) => item.image);
-  return [product.image, ...relatedImages];
+  const ownImages = [product.image, ...(Array.isArray(product.gallery) ? product.gallery : [])]
+    .filter((image) => image && !isDataImage(image));
+  return [...new Set(ownImages.length ? ownImages : [getDefaultProductImage(product.id)])];
 }
 
 function getCurrentUser() {
