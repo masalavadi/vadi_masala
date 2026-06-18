@@ -342,6 +342,7 @@ let isGoogleLoginStarting = false;
 let supabaseConfig = null;
 let productCatalogSource = "local";
 let productCatalogRemoteError = "";
+let localOnlyProductImageQueue = new Map();
 let adminAccess = {
   status: "unknown",
   checkedUserId: null,
@@ -1300,11 +1301,12 @@ async function waitForSupabaseClient() {
 }
 
 async function initializeProductCatalog() {
+  stageLocalOnlyProductImages();
   const remoteLoaded = await loadProductsFromSupabase();
   const removedLocalImages = removeLocalOnlyProductImages();
   if (!remoteLoaded) saveState(PRODUCTS_KEY, products);
   if (removedLocalImages && window.location.hash === "#admin") {
-    showToast("Removed local-only product images. Upload again after Supabase Storage is ready.");
+    showToast("Preparing local images for Supabase sync.");
   }
 }
 
@@ -1438,6 +1440,40 @@ function getImageExtension(contentType) {
 
 function isDataImage(source) {
   return typeof source === "string" && source.startsWith("data:image/");
+}
+
+function stageLocalOnlyProductImages() {
+  localOnlyProductImageQueue = new Map();
+
+  products.forEach((product) => {
+    if (product?.id && isDataImage(product.image)) {
+      localOnlyProductImageQueue.set(product.id, product.image);
+    }
+  });
+}
+
+async function migrateLocalOnlyProductImages() {
+  if (!localOnlyProductImageQueue.size) return false;
+
+  try {
+    showToast("Moving local images to Supabase...");
+    for (const [productId, dataUrl] of localOnlyProductImageQueue.entries()) {
+      const product = getProduct(productId);
+      if (!product) continue;
+      product.image = await uploadDataUrlToSupabase(product.id, dataUrl);
+    }
+
+    const result = await saveProductCatalog({ allProducts: true });
+    if (!result.remoteSaved) throw result.error || new Error("Supabase catalog save failed.");
+    localOnlyProductImageQueue.clear();
+    renderAll();
+    showToast("Local product images moved to Supabase.");
+    return true;
+  } catch (error) {
+    console.warn("Local product image migration failed.", error);
+    showToast("Could not move old local images. Upload again from admin.");
+    return false;
+  }
 }
 
 function removeLocalOnlyProductImages() {
@@ -1797,7 +1833,8 @@ async function verifyAdminAccess() {
     }
 
     adminAccess = { status: "allowed", checkedUserId: currentUser.id, email: result.email || currentUser.email || "" };
-    await seedRemoteProductCatalogIfEmpty();
+    const migratedLocalImages = await migrateLocalOnlyProductImages();
+    if (!migratedLocalImages) await seedRemoteProductCatalogIfEmpty();
     renderAll();
     return true;
   } catch (error) {
@@ -1821,13 +1858,21 @@ function renderAdminSummary() {
   const inventoryValue = products.reduce((sum, product) => sum + getDefaultVariant(product).price * product.stock, 0);
   const openOrders = orders.filter((order) => order.status !== "Delivered").length;
   const revenue = orders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const catalogStatus = getCatalogStatusLabel();
 
   adminSummary.innerHTML = `
     <article class="summary-card"><span>Listed products</span><strong>${listedCount}/10</strong></article>
+    <article class="summary-card"><span>Shared catalog</span><strong>${catalogStatus}</strong></article>
     <article class="summary-card"><span>Inventory value</span><strong>${formatMoney(inventoryValue)}</strong></article>
     <article class="summary-card"><span>Open orders</span><strong>${openOrders}</strong></article>
     <article class="summary-card"><span>Total sales</span><strong>${formatMoney(revenue)}</strong></article>
   `;
+}
+
+function getCatalogStatusLabel() {
+  if (productCatalogSource === "supabase") return "Connected";
+  if (productCatalogSource === "supabase-empty") return "Empty";
+  return productCatalogRemoteError ? "Setup needed" : "Local";
 }
 
 function renderAdminProducts() {
