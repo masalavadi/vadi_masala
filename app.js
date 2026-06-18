@@ -26,6 +26,7 @@ const SUPABASE_AUTH_RETURN_KEYS = [
   "error_description",
 ];
 const SUPABASE_PRODUCTS_TABLE = "products";
+const SUPABASE_ORDERS_TABLE = "orders";
 const SUPABASE_PRODUCT_IMAGES_BUCKET = "product-images";
 
 function variants(...items) {
@@ -339,6 +340,7 @@ let detailQty = 1;
 let detailVariantId = null;
 let detailGalleryIndex = 0;
 let isGoogleLoginStarting = false;
+let isPlacingOrder = false;
 let supabaseConfig = null;
 let productCatalogSource = "local";
 let productCatalogRemoteError = "";
@@ -393,6 +395,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initializeSupabaseConfig();
   await initializeSupabaseSession();
   await initializeProductCatalog();
+  await loadOrdersFromSupabase();
   renderAll();
   handleHashRoute();
 });
@@ -534,7 +537,9 @@ function wireGlobalEvents() {
 
     const detailQtyButton = event.target.closest("[data-detail-qty]");
     if (detailQtyButton) {
-      detailQty = Math.max(1, Math.min(99, detailQty + Number(detailQtyButton.dataset.detailQty)));
+      const product = getProduct(currentProductId);
+      const maxQty = Math.max(1, product?.stock ?? 1);
+      detailQty = Math.max(1, Math.min(maxQty, detailQty + Number(detailQtyButton.dataset.detailQty)));
       renderProductDetail();
       return;
     }
@@ -695,7 +700,7 @@ function wireGlobalEvents() {
     renderOrders();
   });
 
-  orderDetails.addEventListener("change", (event) => {
+  orderDetails.addEventListener("change", async (event) => {
     if (!isAdminAuthorized()) {
       showToast("Admin access required.");
       event.preventDefault();
@@ -706,7 +711,15 @@ function wireGlobalEvents() {
     if (!statusSelect) return;
     const order = orders.find((item) => item.id === statusSelect.dataset.orderStatus);
     if (!order) return;
+    const previousStatus = order.status;
     order.status = statusSelect.value;
+    const saved = await saveOrderToSupabase(order);
+    if (!saved) {
+      order.status = previousStatus;
+      renderOrders();
+      showToast("Could not update order status globally.");
+      return;
+    }
     saveState(ORDERS_KEY, orders);
     renderOrders();
     showToast(`Order ${order.id} marked ${order.status}.`);
@@ -715,7 +728,7 @@ function wireGlobalEvents() {
   cartBody.addEventListener("submit", (event) => {
     if (event.target.matches("#checkoutForm")) {
       event.preventDefault();
-      placeOrder(new FormData(event.target));
+      void placeOrder(new FormData(event.target));
     }
   });
 
@@ -907,6 +920,7 @@ function renderProductDetail() {
   currentProductId = product.id;
   const selectedVariant = getVariant(product, detailVariantId) ?? getDefaultVariant(product);
   detailVariantId = selectedVariant.id;
+  detailQty = Math.max(1, Math.min(detailQty, Math.max(product.stock, 1)));
   const gallery = getProductGallery(product);
   detailGalleryIndex = Math.min(detailGalleryIndex, Math.max(gallery.length - 1, 0));
   const activeImage = gallery[detailGalleryIndex] ?? gallery[0];
@@ -1142,9 +1156,9 @@ function renderCart() {
             <input id="customerState" name="state" autocomplete="address-level1" value="${escapeAttribute(currentUser.state || "")}" required />
           </div>
         </div>
-        <button class="primary-button" type="submit" ${subtotal < MIN_ORDER_VALUE ? "disabled" : ""}>
+        <button class="primary-button" type="submit" ${subtotal < MIN_ORDER_VALUE || isPlacingOrder ? "disabled" : ""}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v.01" /><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-          Place Order
+          ${isPlacingOrder ? "Checking Stock..." : "Place Order"}
         </button>
         <span class="form-note">Shipping available across India. Free shipping above ₹999.</span>
       </form>`
@@ -1304,6 +1318,7 @@ async function initializeProductCatalog() {
   stageLocalOnlyProductImages();
   const remoteLoaded = await loadProductsFromSupabase();
   const removedLocalImages = removeLocalOnlyProductImages();
+  clampCartToStock();
   if (!remoteLoaded) saveState(PRODUCTS_KEY, products);
   if (removedLocalImages && window.location.hash === "#admin") {
     showToast("Preparing local images for Supabase sync.");
@@ -1341,6 +1356,56 @@ async function loadProductsFromSupabase() {
     productCatalogSource = "local";
     productCatalogRemoteError = getSupabaseErrorMessage(error);
     console.warn("Shared product catalog could not be loaded.", error);
+    return false;
+  }
+}
+
+async function loadOrdersFromSupabase() {
+  const client = await waitForSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { data, error } = await client
+      .from(SUPABASE_ORDERS_TABLE)
+      .select("id,data,created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+
+    const remoteOrders = (data || []).map(orderFromSupabaseRow).filter(Boolean);
+    orders = remoteOrders;
+    selectedOrderId = orders[0]?.id ?? null;
+    saveState(ORDERS_KEY, orders);
+    return true;
+  } catch (error) {
+    console.warn("Shared orders could not be loaded.", error);
+    return false;
+  }
+}
+
+function orderFromSupabaseRow(row) {
+  const data = row?.data && typeof row.data === "object" ? row.data : row;
+  const id = row?.id || data?.id;
+  return id ? { ...data, id } : null;
+}
+
+async function saveOrderToSupabase(order) {
+  const client = await waitForSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client.from(SUPABASE_ORDERS_TABLE).upsert(
+      {
+        id: order.id,
+        account_id: order.accountId || "",
+        email: normalizeEmail(order.email),
+        data: order,
+      },
+      { onConflict: "id" },
+    );
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn("Shared order could not be saved.", error);
     return false;
   }
 }
@@ -1555,6 +1620,7 @@ async function initializeSupabaseSession() {
       if (session?.user) {
         resetAdminAccess();
         syncSupabaseAccount(session.user, { mergeGuestCart: true });
+        void loadOrdersFromSupabase().then(() => renderAll());
         return;
       }
       if (currentUserId?.startsWith("supabase-")) {
@@ -1835,6 +1901,7 @@ async function verifyAdminAccess() {
     adminAccess = { status: "allowed", checkedUserId: currentUser.id, email: result.email || currentUser.email || "" };
     const migratedLocalImages = await migrateLocalOnlyProductImages();
     if (!migratedLocalImages) await seedRemoteProductCatalogIfEmpty();
+    await loadOrdersFromSupabase();
     renderAll();
     return true;
   } catch (error) {
@@ -2123,7 +2190,7 @@ function addToCart(productId, variantId, quantity = 1) {
   if (existing) {
     existing.qty = nextQty;
   } else {
-    cart.push({ id: productId, variantId: variant.id, qty: Math.max(1, quantity) });
+    cart.push({ id: productId, variantId: variant.id, qty: nextQty });
   }
   saveActiveCart();
   renderCart();
@@ -2136,7 +2203,9 @@ function updateCartItem(action, productId, variantId) {
   if (!item || !product) return;
 
   if (action === "increase") {
-    item.qty = Math.min(item.qty + 1, product.stock);
+    const nextQty = Math.min(item.qty + 1, product.stock);
+    if (nextQty === item.qty) showToast(`Only ${product.stock} left in stock.`);
+    item.qty = nextQty;
   }
   if (action === "decrease") {
     item.qty -= 1;
@@ -2147,13 +2216,61 @@ function updateCartItem(action, productId, variantId) {
   renderCart();
 }
 
-function placeOrder(formData) {
+function clampCartToStock({ notify = false } = {}) {
+  let changed = false;
+  const removedNames = [];
+  const reducedNames = [];
+
+  cart = cart
+    .map((item) => {
+      const product = getProduct(item.id);
+      if (!product || product.stock <= 0) {
+        changed = true;
+        if (product) removedNames.push(product.name);
+        return null;
+      }
+
+      const currentQty = Math.max(1, Number(item.qty) || 1);
+      const nextQty = Math.min(currentQty, product.stock);
+      if (nextQty !== currentQty) {
+        changed = true;
+        reducedNames.push(product.name);
+      }
+      return { ...item, qty: nextQty };
+    })
+    .filter(Boolean);
+
+  if (changed) {
+    saveActiveCart();
+    if (notify) {
+      const changedNames = [...new Set([...removedNames, ...reducedNames])];
+      showToast(changedNames.length ? `Cart updated for available stock: ${changedNames[0]}.` : "Cart updated for available stock.");
+    }
+  }
+
+  return changed;
+}
+
+async function placeOrder(formData) {
+  if (isPlacingOrder) return;
+
   const currentUser = getCurrentUser();
   if (!currentUser) {
     openAccountDrawer();
     showToast("Login to place your order.");
     return;
   }
+
+  isPlacingOrder = true;
+  renderCart();
+
+  try {
+    showToast("Checking live stock...");
+    await loadProductsFromSupabase();
+    if (clampCartToStock({ notify: true })) {
+      renderAll();
+      return;
+    }
 
   const enrichedCart = getCartItems();
   const subtotal = enrichedCart.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -2174,7 +2291,7 @@ function placeOrder(formData) {
   saveState(ACCOUNTS_KEY, accounts);
 
   const order = {
-    id: `VM${String(Date.now()).slice(-6)}`,
+    id: createOrderId(),
     date: new Date().toISOString().slice(0, 10),
     accountId: currentUser.id,
     email: currentUser.email,
@@ -2194,20 +2311,70 @@ function placeOrder(formData) {
     shipping,
   };
 
-  order.items.forEach((item) => {
-    const product = getProduct(item.id);
-    if (product) product.stock = Math.max(product.stock - item.qty, 0);
-  });
+    const result = await placeSupabaseOrder(order);
+    applyRemoteProducts(result.products);
+    const savedOrder = result.order || order;
+    orders = [savedOrder, ...orders.filter((item) => item.id !== savedOrder.id)];
+    selectedOrderId = savedOrder.id;
+    cart = [];
+    saveState(ORDERS_KEY, orders);
+    saveState(PRODUCTS_KEY, products);
+    saveActiveCart();
+    renderAll();
+    closeCart();
+    openSuccessModal(savedOrder.id);
+  } catch (error) {
+    console.warn("Shared checkout failed.", error);
+    await loadProductsFromSupabase();
+    clampCartToStock({ notify: true });
+    renderAll();
+    showToast(getCheckoutErrorMessage(error));
+  } finally {
+    isPlacingOrder = false;
+    renderCart();
+  }
+}
 
-  orders.unshift(order);
-  selectedOrderId = order.id;
-  cart = [];
-  saveState(ORDERS_KEY, orders);
-  saveState(PRODUCTS_KEY, products);
-  saveActiveCart();
-  renderAll();
-  closeCart();
-  openSuccessModal(order.id);
+async function placeSupabaseOrder(order) {
+  const client = await waitForSupabaseClient();
+  if (!client) throw new Error("Supabase checkout is not configured.");
+
+  const { data, error } = await client.rpc("place_order", {
+    order_payload: order,
+  });
+  if (error) throw error;
+
+  return {
+    order: data?.order || order,
+    products: Array.isArray(data?.products) ? data.products : [],
+  };
+}
+
+function applyRemoteProducts(remoteProducts) {
+  if (!Array.isArray(remoteProducts) || !remoteProducts.length) return;
+
+  const remoteById = new Map(remoteProducts.filter((product) => product?.id).map((product) => [product.id, product]));
+  products = normalizeProducts(products.map((product) => (remoteById.has(product.id) ? { ...product, ...remoteById.get(product.id) } : product)));
+}
+
+function createOrderId() {
+  const time = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `VM${time}${random}`;
+}
+
+function getCheckoutErrorMessage(error) {
+  const message = String(error?.message || error?.details || "");
+  const stockMatch = message.match(/OUT_OF_STOCK:([^:]+):(\d+)/);
+  if (stockMatch) {
+    const product = getProduct(stockMatch[1]);
+    return `${product?.name || "This product"} has only ${stockMatch[2]} left. Cart updated.`;
+  }
+  if (message.includes("LOGIN_REQUIRED")) return "Login again before placing the order.";
+  if (message.includes("ORDER_EMAIL_MISMATCH")) return "Login again before placing the order.";
+  if (message.includes("PRODUCT_NOT_FOUND")) return "One cart item is no longer available.";
+  if (message.includes("place_order")) return "Run the updated Supabase SQL before checkout can update stock.";
+  return "Order could not be placed. Please try again.";
 }
 
 async function saveProductFromAdmin(productId) {
