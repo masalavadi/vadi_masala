@@ -12,6 +12,7 @@ create table if not exists public.products (
 create or replace function public.set_products_updated_at()
 returns trigger
 language plpgsql
+set search_path = pg_catalog
 as $$
 begin
   new.updated_at = now();
@@ -229,11 +230,15 @@ set public = excluded.public,
     allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "Public can read product images" on storage.objects;
-create policy "Public can read product images"
+drop policy if exists "Vadi admin can list product images" on storage.objects;
+create policy "Vadi admin can list product images"
 on storage.objects
 for select
-to anon, authenticated
-using (bucket_id = 'product-images');
+to authenticated
+using (
+  bucket_id = 'product-images'
+  and lower(coalesce(auth.jwt() ->> 'email', '')) = 'masalavadi@gmail.com'
+);
 
 drop policy if exists "Vadi admin can upload product images" on storage.objects;
 create policy "Vadi admin can upload product images"

@@ -7,7 +7,7 @@ const CART_KEY = "vadi-cart-v2";
 const ORDERS_KEY = "vadi-orders-v2";
 const ACCOUNTS_KEY = "vadi-accounts-v1";
 const SESSION_KEY = "vadi-session-v1";
-const COUPON_KEY = "vadi-coupon-v1";
+const COUPON_KEY = "vadi-coupon-v2";
 const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
 const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
 const PUBLIC_CONFIG_ENDPOINT = "/api/public-config";
@@ -346,6 +346,9 @@ let detailQty = 1;
 let detailVariantId = null;
 let detailGalleryIndex = 0;
 let isGoogleLoginStarting = false;
+let isGoogleIdentityInitialized = false;
+let googleIdentityInitializationPromise = null;
+let googleSignInNonce = "";
 let isPlacingOrder = false;
 let supabaseConfig = null;
 let productCatalogSource = "local";
@@ -512,7 +515,7 @@ function wireGlobalEvents() {
 
     const googleLoginButton = event.target.closest("[data-google-login]");
     if (googleLoginButton) {
-      handleGoogleLogin();
+      void renderGoogleSignInButtons();
       return;
     }
 
@@ -1172,11 +1175,11 @@ function renderCart() {
       <form class="coupon-form" id="couponForm">
         <label for="couponCode">Coupon</label>
         <div>
-          <input id="couponCode" name="coupon" value="${escapeAttribute(couponValue)}" placeholder="${TEST_COUPON_CODE}" autocomplete="off" />
+          <input id="couponCode" name="coupon" value="${escapeAttribute(couponValue)}" placeholder="Enter code" autocomplete="off" />
           <button class="secondary-button" type="submit" data-apply-coupon>Apply</button>
           ${coupon ? `<button class="text-link" type="button" data-remove-coupon>Remove</button>` : ""}
         </div>
-        <p>${coupon ? `${escapeHtml(coupon.label)} applied.` : `Use ${TEST_COUPON_CODE} for 99% off test payment.`}</p>
+        ${coupon ? `<p>${escapeHtml(coupon.label)} applied.</p>` : ""}
       </form>
 
       <div class="minimum-meter" style="--meter: ${meter}%">
@@ -1250,13 +1253,13 @@ function renderAccount() {
     accountBody.innerHTML = `
       <div class="auth-card">
         <p class="auth-note google-first-note">Sign in or create an account with Google.</p>
-        <button class="google-login-button" type="button" data-google-login ${isGoogleLoginStarting ? "disabled" : ""}>
-          <span aria-hidden="true">G</span>
-          <strong data-google-label>${isGoogleLoginStarting ? "Opening Google..." : "Continue with Google"}</strong>
-        </button>
-        <p class="auth-note">Google opens in this tab and brings you back after sign-in.</p>
+        <div class="google-signin-slot" data-google-signin aria-label="Continue with Google">
+          <button class="google-login-button" type="button" data-google-login disabled>Loading Google...</button>
+        </div>
+        <p class="auth-note">Google opens a secure account chooser without leaving Vadi Masala.</p>
       </div>
     `;
+    void renderGoogleSignInButtons();
     return;
   }
 
@@ -1362,6 +1365,7 @@ async function initializeSupabaseConfig() {
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
       razorpayKeyId: config.razorpayKeyId || "",
+      googleClientId: config.googleClientId || "",
     };
     return supabaseConfig;
   } catch (error) {
@@ -1784,14 +1788,90 @@ function syncSupabaseAccount(user, options = {}) {
   return account;
 }
 
-async function handleGoogleLogin() {
-  if (isGoogleLoginStarting) return;
+async function waitForGoogleIdentity() {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (window.google?.accounts?.id) return window.google.accounts.id;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return null;
+}
 
-  const returnRoute = document.body.classList.contains("is-admin-site") || location.hash === "#admin" ? "#admin" : "#shop";
-  sessionStorage.setItem(AUTH_RETURN_ROUTE_KEY, returnRoute);
-  const redirectTo = getAuthRedirectUrl();
+async function createGoogleSignInNonce() {
+  const nonceBytes = crypto.getRandomValues(new Uint8Array(32));
+  const nonce = btoa(String.fromCharCode(...nonceBytes));
+  const encodedNonce = new TextEncoder().encode(nonce);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encodedNonce);
+  const hashedNonce = Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return { nonce, hashedNonce };
+}
+
+async function initializeGoogleIdentity(identity) {
+  if (isGoogleIdentityInitialized) return;
+  if (!googleIdentityInitializationPromise) {
+    googleIdentityInitializationPromise = (async () => {
+      const noncePair = await createGoogleSignInNonce();
+      googleSignInNonce = noncePair.nonce;
+      identity.initialize({
+        client_id: supabaseConfig.googleClientId,
+        callback: handleGoogleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: false,
+        context: "signin",
+        nonce: noncePair.hashedNonce,
+        use_fedcm_for_button: true,
+        use_fedcm_for_prompt: true,
+      });
+      isGoogleIdentityInitialized = true;
+    })().catch((error) => {
+      googleIdentityInitializationPromise = null;
+      throw error;
+    });
+  }
+  await googleIdentityInitializationPromise;
+}
+
+async function renderGoogleSignInButtons() {
+  if (getCurrentUser() || !supabaseConfig?.googleClientId) return;
+  const identity = await waitForGoogleIdentity();
+  if (!identity) {
+    document.querySelectorAll("[data-google-signin]").forEach((slot) => {
+      slot.innerHTML = '<button class="google-login-button" type="button" disabled>Google sign-in unavailable</button>';
+    });
+    return;
+  }
+
+  try {
+    await initializeGoogleIdentity(identity);
+  } catch (error) {
+    console.warn("Google sign-in initialization failed.", error);
+    document.querySelectorAll("[data-google-signin]").forEach((slot) => {
+      slot.innerHTML = '<button class="google-login-button" type="button" disabled>Google sign-in unavailable</button>';
+    });
+    return;
+  }
+
+  document.querySelectorAll("[data-google-signin]").forEach((slot) => {
+    if (slot.dataset.googleRendered === "true") return;
+    slot.innerHTML = "";
+    identity.renderButton(slot, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "rectangular",
+      logo_alignment: "left",
+      width: Math.min(320, Math.max(220, slot.clientWidth || 320)),
+    });
+    slot.dataset.googleRendered = "true";
+  });
+}
+
+async function handleGoogleCredential(response) {
+  if (isGoogleLoginStarting) return;
   setGoogleLoginStarting(true);
-  showToast("Opening Google sign-in...");
+  showToast("Signing in with Google...");
 
   const client = await waitForSupabaseClient();
   if (!client) {
@@ -1800,54 +1880,33 @@ async function handleGoogleLogin() {
     return;
   }
 
-  let isRedirecting = false;
   try {
-    const { data, error } = await client.auth.signInWithOAuth({
+    if (!response?.credential) throw new Error("Google did not return a sign-in credential.");
+    if (!googleSignInNonce) throw new Error("Google sign-in security check could not be completed.");
+    const { data, error } = await client.auth.signInWithIdToken({
       provider: "google",
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-        queryParams: {
-          prompt: "select_account",
-        },
-      },
+      token: response.credential,
+      nonce: googleSignInNonce,
     });
+    if (error) throw error;
 
-    if (error) {
-      if (error.message?.toLowerCase().includes("unsupported provider")) {
-        showToast("Enable Google provider in Supabase Auth settings first.");
-        return;
-      }
-      showToast(error.message || "Google login could not start.");
-      return;
-    }
-
-    if (data?.url) {
-      isRedirecting = true;
-      window.location.assign(data.url);
-      return;
-    }
-
-    showToast("Google login could not create a sign-in link.");
+    const account = data?.user ? syncSupabaseAccount(data.user, { mergeGuestCart: true }) : null;
+    await loadOrdersFromSupabase();
+    renderAll();
+    if (account) showToast(`Welcome, ${account.name}.`);
   } catch (error) {
-    console.warn("Google login could not start.", error);
-    showToast("Google login could not start. Please try again.");
+    console.warn("Google ID token sign-in failed.", error);
+    showToast(error?.message || "Google login could not complete. Please try again.");
   } finally {
-    if (!isRedirecting) setGoogleLoginStarting(false);
+    setGoogleLoginStarting(false);
   }
-}
-
-function getAuthRedirectUrl() {
-  return `${window.location.origin}${window.location.pathname}`;
 }
 
 function setGoogleLoginStarting(value) {
   isGoogleLoginStarting = value;
-  document.querySelectorAll("[data-google-login]").forEach((button) => {
-    button.disabled = value;
-    button.classList.toggle("is-loading", value);
-    const label = button.querySelector("[data-google-label]");
-    if (label) label.textContent = value ? "Opening Google..." : "Continue with Google";
+  document.querySelectorAll("[data-google-signin]").forEach((slot) => {
+    slot.classList.toggle("is-loading", value);
+    slot.setAttribute("aria-busy", String(value));
   });
 }
 
@@ -1889,13 +1948,13 @@ function renderAdminAccess() {
         <span class="kicker">Admin only</span>
         <h1>Sign in to continue</h1>
         <p>This workspace is protected. Use the Vadi Masala admin Google account to access products and orders.</p>
-        <button class="google-login-button" type="button" data-google-login ${isGoogleLoginStarting ? "disabled" : ""}>
-          <span aria-hidden="true">G</span>
-          <strong data-google-label>${isGoogleLoginStarting ? "Opening Google..." : "Continue with Google"}</strong>
-        </button>
+        <div class="google-signin-slot" data-google-signin aria-label="Continue with Google">
+          <button class="google-login-button" type="button" data-google-login disabled>Loading Google...</button>
+        </div>
         <button class="text-link" type="button" data-view-link="shop">Back to Store</button>
       </div>
     `;
+    void renderGoogleSignInButtons();
     return;
   }
 
@@ -3001,7 +3060,7 @@ function applyCouponFromCart() {
   const code = normalizeCouponCode(input?.value);
   const coupon = getCoupon(code);
   if (!coupon) {
-    showToast(`Use ${TEST_COUPON_CODE} to test checkout at 99% off.`);
+    showToast("Coupon code is invalid.");
     return;
   }
 

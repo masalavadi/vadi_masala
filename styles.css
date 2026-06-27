@@ -4587,6 +4587,23 @@ body.is-customer-site .account-button.is-signed-in {
   font-weight: 800;
 }
 
+.google-signin-slot {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  overflow: hidden;
+}
+
+.google-signin-slot.is-loading {
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.google-signin-slot iframe {
+  max-width: 100%;
+}
+
 .auth-fallback-button {
   justify-content: center;
   width: 100%;

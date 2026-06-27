@@ -13,6 +13,7 @@ module.exports = function handler(request, response) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
   if (!supabaseUrl || !supabaseAnonKey) {
     sendJson(response, 500, { error: "Supabase public config is not configured" });
     return;
@@ -22,5 +23,6 @@ module.exports = function handler(request, response) {
     supabaseUrl,
     supabaseAnonKey,
     razorpayKeyId: razorpayKeyId || "",
+    googleClientId: googleClientId || "",
   });
 };
