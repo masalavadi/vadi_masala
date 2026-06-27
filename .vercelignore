@@ -1,5 +1,7 @@
 .git
 .vercel
+.env
+node_modules
 stitch_reference
 scripts
 supabase-products.sql

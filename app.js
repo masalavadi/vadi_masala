@@ -9,6 +9,8 @@ const SESSION_KEY = "vadi-session-v1";
 const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
 const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
 const PUBLIC_CONFIG_ENDPOINT = "/api/public-config";
+const RAZORPAY_CREATE_ORDER_ENDPOINT = "/api/create-order";
+const RAZORPAY_VERIFY_PAYMENT_ENDPOINT = "/api/verify-payment";
 const MAX_PRODUCT_IMAGE_DIMENSION = 900;
 const PRODUCT_IMAGE_QUALITY = 0.78;
 const SUPABASE_AUTH_RETURN_KEYS = [
@@ -1146,9 +1148,7 @@ function renderCart() {
           <div class="field">
             <label for="paymentMethod">Payment</label>
             <select id="paymentMethod" name="payment">
-              <option>UPI</option>
-              <option>Cash on Delivery</option>
-              <option>Card</option>
+              <option value="Razorpay">Razorpay Online</option>
             </select>
           </div>
           <div class="field">
@@ -1296,6 +1296,7 @@ async function initializeSupabaseConfig() {
     supabaseConfig = {
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
+      razorpayKeyId: config.razorpayKeyId || "",
     };
     return supabaseConfig;
   } catch (error) {
@@ -2263,6 +2264,7 @@ async function placeOrder(formData) {
 
   isPlacingOrder = true;
   renderCart();
+  let verifiedPayment = null;
 
   try {
     showToast("Checking live stock...");
@@ -2272,44 +2274,50 @@ async function placeOrder(formData) {
       return;
     }
 
-  const enrichedCart = getCartItems();
-  const subtotal = enrichedCart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  if (subtotal < MIN_ORDER_VALUE) {
-    showToast(`Minimum order value is ${formatMoney(MIN_ORDER_VALUE)}.`);
-    return;
-  }
+    const enrichedCart = getCartItems();
+    const subtotal = enrichedCart.reduce((sum, item) => sum + item.price * item.qty, 0);
+    if (subtotal < MIN_ORDER_VALUE) {
+      showToast(`Minimum order value is ${formatMoney(MIN_ORDER_VALUE)}.`);
+      return;
+    }
 
-  const shipping = subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
-  const customerName = String(formData.get("customer") || currentUser.name).trim();
-  const phone = String(formData.get("phone") || "").trim();
-  const address = String(formData.get("address") || "").trim();
-  const state = String(formData.get("state") || "").trim();
-  currentUser.name = customerName || currentUser.name;
-  currentUser.phone = phone || currentUser.phone;
-  currentUser.address = address || currentUser.address;
-  currentUser.state = state || currentUser.state;
-  saveState(ACCOUNTS_KEY, accounts);
+    const shipping = subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
+    const customerName = String(formData.get("customer") || currentUser.name).trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const address = String(formData.get("address") || "").trim();
+    const state = String(formData.get("state") || "").trim();
+    currentUser.name = customerName || currentUser.name;
+    currentUser.phone = phone || currentUser.phone;
+    currentUser.address = address || currentUser.address;
+    currentUser.state = state || currentUser.state;
+    saveState(ACCOUNTS_KEY, accounts);
 
-  const order = {
-    id: createOrderId(),
-    date: new Date().toISOString().slice(0, 10),
-    accountId: currentUser.id,
-    email: currentUser.email,
-    customer: currentUser.name,
-    phone: currentUser.phone,
-    address: `${currentUser.address}, ${currentUser.state}`.replace(/^,\s*|,\s*$/g, ""),
-    payment: String(formData.get("payment") || "UPI"),
-    status: "New",
-    items: enrichedCart.map((item) => ({
-      id: item.id,
-      variantId: item.variantId,
-      name: item.name,
-      pack: item.pack,
-      price: item.price,
-      qty: item.qty,
-    })),
-    shipping,
-  };
+    const order = {
+      id: createOrderId(),
+      date: new Date().toISOString().slice(0, 10),
+      accountId: currentUser.id,
+      email: currentUser.email,
+      customer: currentUser.name,
+      phone: currentUser.phone,
+      address: `${currentUser.address}, ${currentUser.state}`.replace(/^,\s*|,\s*$/g, ""),
+      payment: String(formData.get("payment") || "Razorpay"),
+      status: "New",
+      items: enrichedCart.map((item) => ({
+        id: item.id,
+        variantId: item.variantId,
+        name: item.name,
+        pack: item.pack,
+        price: item.price,
+        qty: item.qty,
+      })),
+      shipping,
+      paymentStatus: "Pending",
+    };
+
+    verifiedPayment = await collectRazorpayPayment({ order, currentUser });
+    order.payment = "Razorpay";
+    order.paymentStatus = "Paid";
+    order.razorpay = verifiedPayment;
 
     const result = await placeSupabaseOrder(order);
     applyRemoteProducts(result.products);
@@ -2328,11 +2336,112 @@ async function placeOrder(formData) {
     await loadProductsFromSupabase();
     clampCartToStock({ notify: true });
     renderAll();
-    showToast(getCheckoutErrorMessage(error));
+    showToast(getCheckoutErrorMessage(error, { verifiedPayment }));
   } finally {
     isPlacingOrder = false;
     renderCart();
   }
+}
+
+async function collectRazorpayPayment({ order, currentUser }) {
+  if (!supabaseConfig?.razorpayKeyId) throw new Error("RAZORPAY_KEY_MISSING");
+
+  const razorpayOrder = await createRazorpayOrder({
+    currency: "INR",
+    receipt: order.id,
+    items: order.items.map((item) => ({
+      id: item.id,
+      variantId: item.variantId,
+      qty: item.qty,
+    })),
+  });
+
+  const payment = await openRazorpayCheckout({
+    razorpayOrder,
+    order,
+    currentUser,
+  });
+
+  const verifiedPayment = await verifyRazorpayPayment(payment);
+  return {
+    orderId: verifiedPayment.razorpay_order_id,
+    paymentId: verifiedPayment.razorpay_payment_id,
+    signature: payment.razorpay_signature,
+  };
+}
+
+async function createRazorpayOrder(payload) {
+  const response = await fetch(RAZORPAY_CREATE_ORDER_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "RAZORPAY_ORDER_FAILED");
+  return result;
+}
+
+function openRazorpayCheckout({ razorpayOrder, order, currentUser }) {
+  if (!window.Razorpay) throw new Error("RAZORPAY_CHECKOUT_MISSING");
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      callback(value);
+    };
+
+    const checkout = new window.Razorpay({
+      key: supabaseConfig.razorpayKeyId,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      name: "Vadi Masala",
+      description: `Order ${order.id}`,
+      order_id: razorpayOrder.order_id,
+      prefill: {
+        name: currentUser.name || "",
+        email: currentUser.email || "",
+        contact: currentUser.phone || "",
+      },
+      notes: {
+        receipt: order.id,
+      },
+      theme: {
+        color: "#9c5600",
+      },
+      handler(payment) {
+        finish(resolve, payment);
+      },
+      modal: {
+        ondismiss() {
+          finish(reject, new Error("PAYMENT_CANCELLED"));
+        },
+      },
+    });
+
+    checkout.on("payment.failed", (response) => {
+      const message = response?.error?.description || response?.error?.reason || "PAYMENT_FAILED";
+      finish(reject, new Error(message));
+    });
+
+    checkout.open();
+  });
+}
+
+async function verifyRazorpayPayment(payment) {
+  const response = await fetch(RAZORPAY_VERIFY_PAYMENT_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payment),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success) throw new Error(result.error || "PAYMENT_VERIFICATION_FAILED");
+  return result;
 }
 
 async function placeSupabaseOrder(order) {
@@ -2363,8 +2472,15 @@ function createOrderId() {
   return `VM${time}${random}`;
 }
 
-function getCheckoutErrorMessage(error) {
+function getCheckoutErrorMessage(error, options = {}) {
   const message = String(error?.message || error?.details || "");
+  if (options.verifiedPayment) return "Payment verified, but order stock changed. Contact Vadi Masala support with your payment ID.";
+  if (message.includes("PAYMENT_CANCELLED")) return "Payment cancelled. Your order was not placed.";
+  if (message.includes("RAZORPAY_KEY_MISSING")) return "Razorpay is not configured yet.";
+  if (message.includes("RAZORPAY_CHECKOUT_MISSING")) return "Payment checkout could not load. Please try again.";
+  if (message.includes("PAYMENT_VERIFICATION_FAILED") || message.includes("Invalid payment signature")) {
+    return "Payment verification failed. Your order was not placed.";
+  }
   const stockMatch = message.match(/OUT_OF_STOCK:([^:]+):(\d+)/);
   if (stockMatch) {
     const product = getProduct(stockMatch[1]);
