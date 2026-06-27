@@ -3,6 +3,7 @@ const Razorpay = require("razorpay");
 const MIN_ORDER_VALUE = 500;
 const SHIPPING_FEE = 59;
 const FREE_SHIPPING_VALUE = 999;
+const TEST_COUPON_CODE = "TEST99";
 
 function sendJson(response, statusCode, body) {
   response.setHeader("Cache-Control", "no-store");
@@ -96,7 +97,23 @@ function getVariant(product, variantId) {
   };
 }
 
-async function calculateOrderAmount(items) {
+function normalizeCouponCode(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function getCoupon(code) {
+  const normalized = normalizeCouponCode(code);
+  if (normalized !== TEST_COUPON_CODE) return null;
+  return {
+    code: TEST_COUPON_CODE,
+    label: "TEST99 99% off",
+    rate: 0.99,
+    waivesShipping: true,
+    minimumPayable: 1,
+  };
+}
+
+async function calculateOrderAmount(items, couponCode = "") {
   if (!Array.isArray(items) || !items.length) {
     throw new Error("Cart is empty");
   }
@@ -128,12 +145,23 @@ async function calculateOrderAmount(items) {
     throw new Error("Minimum order value not reached");
   }
 
-  const shipping = subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
+  const coupon = getCoupon(couponCode);
+  let discount = 0;
+  let shipping = subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
+  if (coupon) {
+    discount = Math.min(subtotal - coupon.minimumPayable, Math.round(subtotal * coupon.rate));
+    if (coupon.waivesShipping) shipping = 0;
+  }
+
+  const total = Math.max(coupon?.minimumPayable || 0, subtotal - discount + shipping);
   return {
+    couponCode: coupon?.code || "",
+    couponLabel: coupon?.label || "",
+    discount,
     subtotal,
     shipping,
-    total: subtotal + shipping,
-    amount: Math.round((subtotal + shipping) * 100),
+    total,
+    amount: Math.round(total * 100),
   };
 }
 
@@ -159,7 +187,7 @@ module.exports = async function handler(request, response) {
   }
 
   try {
-    const calculated = await calculateOrderAmount(body.items);
+    const calculated = await calculateOrderAmount(body.items, body.couponCode);
     const order = await razorpay.orders.create({
       amount: calculated.amount,
       currency,
@@ -171,6 +199,9 @@ module.exports = async function handler(request, response) {
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
+      couponCode: calculated.couponCode,
+      couponLabel: calculated.couponLabel,
+      discount: calculated.discount,
       subtotal: calculated.subtotal,
       shipping: calculated.shipping,
       total: calculated.total,

@@ -327,7 +327,7 @@ body.is-admin-site .nav-link.is-active {
   background:
     linear-gradient(90deg, rgba(255, 249, 237, 0.98) 0%, rgba(255, 249, 237, 0.88) 40%, rgba(255, 249, 237, 0.18) 82%),
     var(--block-print),
-    url("assets/hero-spices.png") center / cover;
+    url("assets/hero-spices.webp") center / cover;
   background-size: auto, 104px 104px, cover;
   border-bottom: 1px solid var(--line);
 }
@@ -1451,6 +1451,48 @@ h3 {
   font-weight: 900;
 }
 
+.discount-line {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.coupon-form {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 4px;
+  padding: 12px;
+  border: 1px dashed rgba(47, 125, 70, 0.32);
+  border-radius: var(--radius);
+  background: #f5fbef;
+}
+
+.coupon-form label {
+  color: var(--green);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.coupon-form > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+
+.coupon-form input {
+  min-width: 0;
+  border: 1px solid rgba(47, 125, 70, 0.24);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+
+.coupon-form p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
 .minimum-meter {
   margin: 18px 0;
 }
@@ -1515,6 +1557,7 @@ h3 {
 .field textarea,
 .field select,
 .admin-field input,
+.admin-field textarea,
 .admin-field select,
 #orderFilter {
   width: 100%;
@@ -1536,6 +1579,7 @@ h3 {
 .field textarea:focus,
 .field select:focus,
 .admin-field input:focus,
+.admin-field textarea:focus,
 .admin-field select:focus,
 #orderFilter:focus {
   border-color: var(--rust);
@@ -1543,6 +1587,7 @@ h3 {
 }
 
 body.is-admin-site .admin-field input,
+body.is-admin-site .admin-field textarea,
 body.is-admin-site .admin-field select,
 body.is-admin-site #orderFilter {
   border-color: var(--admin-line);
@@ -1551,6 +1596,7 @@ body.is-admin-site #orderFilter {
 }
 
 body.is-admin-site .admin-field input:focus,
+body.is-admin-site .admin-field textarea:focus,
 body.is-admin-site .admin-field select:focus,
 body.is-admin-site #orderFilter:focus {
   border-color: var(--admin-accent);
@@ -1942,6 +1988,44 @@ body.is-admin-site .details-header .kicker {
   opacity: 0;
 }
 
+.admin-gallery-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 10px;
+}
+
+.admin-gallery-item {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius);
+  background: #f6f8f1;
+}
+
+.admin-gallery-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.admin-gallery-item span,
+.admin-gallery-item button {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: rgba(22, 39, 31, 0.82);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.admin-gallery-item button {
+  cursor: pointer;
+}
+
 .admin-product .primary-button {
   min-width: 92px;
   align-self: end;
@@ -2331,7 +2415,7 @@ body.is-admin-site .admin-hero .primary-button:hover {
     background:
       linear-gradient(180deg, rgba(255, 249, 237, 0.96) 0%, rgba(255, 249, 237, 0.86) 54%, rgba(255, 249, 237, 0.42) 100%),
       var(--block-print),
-      url("assets/hero-spices.png") center / cover;
+      url("assets/hero-spices.webp") center / cover;
     background-size: auto, 104px 104px, cover;
   }
 

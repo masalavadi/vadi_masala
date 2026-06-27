@@ -1,16 +1,19 @@
 const MIN_ORDER_VALUE = 500;
 const SHIPPING_FEE = 59;
 const FREE_SHIPPING_VALUE = 999;
+const TEST_COUPON_CODE = "TEST99";
 const PRODUCTS_KEY = "vadi-products-v2";
 const CART_KEY = "vadi-cart-v2";
 const ORDERS_KEY = "vadi-orders-v2";
 const ACCOUNTS_KEY = "vadi-accounts-v1";
 const SESSION_KEY = "vadi-session-v1";
+const COUPON_KEY = "vadi-coupon-v1";
 const AUTH_RETURN_ROUTE_KEY = "vadi-auth-return-route";
 const ADMIN_SESSION_ENDPOINT = "/api/admin-session";
 const PUBLIC_CONFIG_ENDPOINT = "/api/public-config";
 const RAZORPAY_CREATE_ORDER_ENDPOINT = "/api/create-order";
 const RAZORPAY_VERIFY_PAYMENT_ENDPOINT = "/api/verify-payment";
+const ORDER_SYNC_ENDPOINT = "/api/sync-order";
 const MAX_PRODUCT_IMAGE_DIMENSION = 900;
 const PRODUCT_IMAGE_QUALITY = 0.78;
 const SUPABASE_AUTH_RETURN_KEYS = [
@@ -46,7 +49,7 @@ const DEFAULT_PRODUCTS = [
     stock: 48,
     listed: true,
     badge: "High curcumin",
-    image: "assets/lakadong-turmeric.png",
+    image: "assets/lakadong-turmeric.webp",
     description:
       "Golden organic turmeric with natural curcumin richness, warm aroma, and earthy depth for daily cooking.",
     longDescription:
@@ -70,7 +73,7 @@ const DEFAULT_PRODUCTS = [
     stock: 36,
     listed: true,
     badge: "Color rich",
-    image: "assets/kashmiri-chilli.png",
+    image: "assets/kashmiri-chilli.webp",
     description:
       "Mild organic chilli powder prized for deep red color, smooth heat, and a sweet smoky finish.",
     longDescription:
@@ -94,7 +97,7 @@ const DEFAULT_PRODUCTS = [
     stock: 42,
     listed: true,
     badge: "Bold aroma",
-    image: "assets/black-pepper.png",
+    image: "assets/black-pepper.webp",
     description:
       "Large-grade peppercorns with bright citrus notes, slow heat, and a clean lingering spice.",
     longDescription:
@@ -118,7 +121,7 @@ const DEFAULT_PRODUCTS = [
     stock: 64,
     listed: true,
     badge: "Slow roasted",
-    image: "assets/roasted-cumin.png",
+    image: "assets/roasted-cumin.webp",
     description:
       "Nutty cumin seeds roasted in small batches for raita, jeera rice, chaas, and everyday tadka.",
     longDescription:
@@ -142,7 +145,7 @@ const DEFAULT_PRODUCTS = [
     stock: 57,
     listed: true,
     badge: "Citrusy",
-    image: "assets/coriander-powder.png",
+    image: "assets/coriander-powder.webp",
     description:
       "Freshly ground coriander with gentle citrus sweetness and a soft body for curries and gravies.",
     longDescription:
@@ -166,7 +169,7 @@ const DEFAULT_PRODUCTS = [
     stock: 25,
     listed: true,
     badge: "Premium pods",
-    image: "assets/green-cardamom.png",
+    image: "assets/green-cardamom.webp",
     description:
       "Fragrant green cardamom pods with sweet floral oils for chai, desserts, biryani, and festive cooking.",
     longDescription:
@@ -190,7 +193,7 @@ const DEFAULT_PRODUCTS = [
     stock: 31,
     listed: true,
     badge: "Sweet bark",
-    image: "assets/cinnamon-sticks.png",
+    image: "assets/cinnamon-sticks.webp",
     description:
       "Naturally sweet cinnamon bark with woody warmth for pulao, chai, baking, and slow simmered gravies.",
     longDescription:
@@ -214,7 +217,7 @@ const DEFAULT_PRODUCTS = [
     stock: 28,
     listed: true,
     badge: "Oil rich",
-    image: "assets/clove-whole.png",
+    image: "assets/clove-whole.webp",
     description:
       "Dense whole cloves with strong essential oils, perfect for garam masala, chai, rice, and pickles.",
     longDescription:
@@ -238,7 +241,7 @@ const DEFAULT_PRODUCTS = [
     stock: 44,
     listed: true,
     badge: "Best seller",
-    image: "assets/garam-masala.png",
+    image: "assets/garam-masala.webp",
     description:
       "A balanced Vadi house blend with roasted whole spices, warm finish, and no fillers or artificial color.",
     longDescription:
@@ -262,7 +265,7 @@ const DEFAULT_PRODUCTS = [
     stock: 70,
     listed: true,
     badge: "Bitter sweet",
-    image: "assets/fenugreek-seeds.png",
+    image: "assets/fenugreek-seeds.webp",
     description:
       "Organic methi seeds with nutty bitterness for pickles, tadka, sprouts, and traditional spice blends.",
     longDescription:
@@ -330,6 +333,7 @@ let accounts = loadState(ACCOUNTS_KEY, []);
 let currentUserId = loadState(SESSION_KEY, null);
 let cart = loadState(getCartStorageKey(), []);
 let orders = loadState(ORDERS_KEY, DEFAULT_ORDERS);
+let appliedCouponCode = loadState(COUPON_KEY, "");
 if (currentUserId && !accounts.some((account) => account.id === currentUserId)) {
   currentUserId = null;
   localStorage.removeItem(SESSION_KEY);
@@ -433,14 +437,22 @@ function normalizeProducts(sourceProducts) {
   return safeProducts.map((product) => {
     const fallback = defaultsById.get(product.id) ?? product;
     const normalized = { ...fallback, ...product };
+    normalized.image = normalizeLocalAssetImage(normalized.image || fallback.image);
     normalized.variants = product.variants?.length ? product.variants : fallback.variants;
     normalized.longDescription = product.longDescription || fallback.longDescription || product.description;
     normalized.flavor = product.flavor || fallback.flavor || "Clean spice aroma";
     normalized.heat = product.heat || fallback.heat || "Balanced";
     normalized.oil = product.oil || fallback.oil || "Naturally aromatic";
     normalized.harvest = product.harvest || fallback.harvest || "Small-batch selected";
+    normalized.gallery = Array.isArray(product.gallery) ? product.gallery.filter(Boolean).map(normalizeLocalAssetImage) : [];
     return normalized;
   });
+}
+
+function normalizeLocalAssetImage(source) {
+  if (typeof source !== "string") return "";
+  if (/^assets\/.+\.(png|jpg|jpeg)$/i.test(source)) return source.replace(/\.(png|jpg|jpeg)$/i, ".webp");
+  return source;
 }
 
 function mergeProductsWithDefaults(sourceProducts) {
@@ -566,6 +578,18 @@ function wireGlobalEvents() {
       return;
     }
 
+    const couponApply = event.target.closest("[data-apply-coupon]");
+    if (couponApply) {
+      applyCouponFromCart();
+      return;
+    }
+
+    const couponRemove = event.target.closest("[data-remove-coupon]");
+    if (couponRemove) {
+      clearAppliedCoupon();
+      return;
+    }
+
     const orderButton = event.target.closest("[data-order-id]");
     if (orderButton) {
       if (!isAdminAuthorized()) {
@@ -584,6 +608,16 @@ function wireGlobalEvents() {
         return;
       }
       void saveProductFromAdmin(adminSave.dataset.saveProduct);
+      return;
+    }
+
+    const removeGalleryImage = event.target.closest("[data-remove-gallery-image]");
+    if (removeGalleryImage) {
+      if (!isAdminAuthorized()) {
+        showToast("Admin access required.");
+        return;
+      }
+      void removeProductGalleryImage(removeGalleryImage.dataset.removeGalleryImage, Number(removeGalleryImage.dataset.galleryIndex));
       return;
     }
 
@@ -692,6 +726,11 @@ function wireGlobalEvents() {
     if (fileInput && fileInput.files?.[0]) {
       void uploadProductImage(fileInput.dataset.imageUpload, fileInput.files[0]);
     }
+
+    const galleryInput = event.target.closest("[data-gallery-upload]");
+    if (galleryInput && galleryInput.files?.length) {
+      void uploadProductGalleryImages(galleryInput.dataset.galleryUpload, Array.from(galleryInput.files));
+    }
   });
 
   orderFilter.addEventListener("change", () => {
@@ -728,6 +767,12 @@ function wireGlobalEvents() {
   });
 
   cartBody.addEventListener("submit", (event) => {
+    if (event.target.matches("#couponForm")) {
+      event.preventDefault();
+      applyCouponFromCart();
+      return;
+    }
+
     if (event.target.matches("#checkoutForm")) {
       event.preventDefault();
       void placeOrder(new FormData(event.target));
@@ -1065,11 +1110,11 @@ function renderRelatedProducts() {
 function renderCart() {
   const enrichedCart = getCartItems();
   const currentUser = getCurrentUser();
-  const subtotal = enrichedCart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const shipping = subtotal === 0 || subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
-  const total = subtotal + shipping;
-  const remaining = Math.max(MIN_ORDER_VALUE - subtotal, 0);
-  const meter = Math.min((subtotal / MIN_ORDER_VALUE) * 100, 100);
+  const pricing = getCartPricing(enrichedCart, appliedCouponCode);
+  const remaining = Math.max(MIN_ORDER_VALUE - pricing.subtotal, 0);
+  const meter = Math.min((pricing.subtotal / MIN_ORDER_VALUE) * 100, 100);
+  const coupon = getCoupon(appliedCouponCode);
+  const couponValue = coupon?.code || "";
 
   cartCount.textContent = String(enrichedCart.reduce((sum, item) => sum + item.qty, 0));
 
@@ -1115,9 +1160,24 @@ function renderCart() {
     </div>
 
     <div class="cart-summary">
-      <div class="summary-line"><span>Subtotal</span><strong>${formatMoney(subtotal)}</strong></div>
-      <div class="summary-line"><span>Shipping</span><strong>${shipping === 0 ? "Free" : formatMoney(shipping)}</strong></div>
-      <div class="summary-line total"><span>Total</span><strong>${formatMoney(total)}</strong></div>
+      <div class="summary-line"><span>Subtotal</span><strong>${formatMoney(pricing.subtotal)}</strong></div>
+      ${
+        pricing.discount > 0
+          ? `<div class="summary-line discount-line"><span>${escapeHtml(pricing.couponLabel)}</span><strong>-${formatMoney(pricing.discount)}</strong></div>`
+          : ""
+      }
+      <div class="summary-line"><span>Shipping</span><strong>${pricing.shipping === 0 ? "Free" : formatMoney(pricing.shipping)}</strong></div>
+      <div class="summary-line total"><span>Total</span><strong>${formatMoney(pricing.total)}</strong></div>
+
+      <form class="coupon-form" id="couponForm">
+        <label for="couponCode">Coupon</label>
+        <div>
+          <input id="couponCode" name="coupon" value="${escapeAttribute(couponValue)}" placeholder="${TEST_COUPON_CODE}" autocomplete="off" />
+          <button class="secondary-button" type="submit" data-apply-coupon>Apply</button>
+          ${coupon ? `<button class="text-link" type="button" data-remove-coupon>Remove</button>` : ""}
+        </div>
+        <p>${coupon ? `${escapeHtml(coupon.label)} applied.` : `Use ${TEST_COUPON_CODE} for 99% off test payment.`}</p>
+      </form>
 
       <div class="minimum-meter" style="--meter: ${meter}%">
         <div class="meter-track"><div class="meter-fill"></div></div>
@@ -1156,7 +1216,7 @@ function renderCart() {
             <input id="customerState" name="state" autocomplete="address-level1" value="${escapeAttribute(currentUser.state || "")}" required />
           </div>
         </div>
-        <button class="primary-button" type="submit" ${subtotal < MIN_ORDER_VALUE || isPlacingOrder ? "disabled" : ""}>
+        <button class="primary-button" type="submit" ${pricing.subtotal < MIN_ORDER_VALUE || isPlacingOrder ? "disabled" : ""}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v.01" /><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           ${isPlacingOrder ? "Checking Stock..." : "Place Order"}
         </button>
@@ -1264,6 +1324,11 @@ function renderAccountOrder(order) {
           )
           .join("")}
       </div>
+      ${
+        Number(order.discount) > 0
+          ? `<div class="summary-line"><span>${escapeHtml(order.couponCode || "Discount")}</span><strong>-${formatMoney(order.discount)}</strong></div>`
+          : ""
+      }
       <div class="summary-line total"><span>Total</span><strong>${formatMoney(getOrderTotal(order))}</strong></div>
     </article>
   `;
@@ -1471,6 +1536,15 @@ async function prepareProductForRemote(product) {
   if (isDataImage(remoteProduct.image)) {
     remoteProduct.image = await uploadDataUrlToSupabase(remoteProduct.id, remoteProduct.image);
     product.image = remoteProduct.image;
+  }
+  if (Array.isArray(remoteProduct.gallery)) {
+    const gallery = [];
+    for (const image of remoteProduct.gallery) {
+      if (!image) continue;
+      gallery.push(isDataImage(image) ? await uploadDataUrlToSupabase(remoteProduct.id, image) : image);
+    }
+    remoteProduct.gallery = gallery;
+    product.gallery = gallery;
   }
   return remoteProduct;
 }
@@ -1943,6 +2017,28 @@ function getCatalogStatusLabel() {
   return productCatalogRemoteError ? "Setup needed" : "Local";
 }
 
+function renderAdminGallery(product) {
+  const images = getProductGallery(product);
+  return `
+    <div class="admin-gallery-list">
+      ${images
+        .map(
+          (image, index) => `
+            <div class="admin-gallery-item">
+              <img src="${image}" alt="" />
+              ${
+                index === 0
+                  ? `<span>Main</span>`
+                  : `<button type="button" data-remove-gallery-image="${product.id}" data-gallery-index="${index - 1}" aria-label="Remove image ${index + 1}">Remove</button>`
+              }
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderAdminProducts() {
   adminProductList.innerHTML = products
     .map((product) => {
@@ -1953,8 +2049,13 @@ function renderAdminProducts() {
             <img src="${product.image}" alt="${escapeHtml(product.name)}" />
             <label class="image-upload">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-              Image
+              Main image
               <input type="file" accept="image/*" data-image-upload="${product.id}" />
+            </label>
+            <label class="image-upload">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              Gallery
+              <input type="file" accept="image/*" multiple data-gallery-upload="${product.id}" />
             </label>
           </div>
           <div class="admin-product-main">
@@ -1964,6 +2065,18 @@ function renderAdminProducts() {
               <input type="checkbox" data-listed-toggle="${product.id}" ${product.listed ? "checked" : ""} />
               <span>${product.listed ? "Listed" : "Unlisted"}</span>
             </label>
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-name">Name</label>
+            <input id="${product.id}-name" data-product-input="name" value="${escapeAttribute(product.name)}" />
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-category">Category</label>
+            <input id="${product.id}-category" data-product-input="category" value="${escapeAttribute(product.category)}" />
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-region">Region</label>
+            <input id="${product.id}-region" data-product-input="region" value="${escapeAttribute(product.region)}" />
           </div>
           <div class="admin-field">
             <label for="${product.id}-price">Base Price</label>
@@ -1986,8 +2099,40 @@ function renderAdminProducts() {
             <input id="${product.id}-description" data-product-input="description" value="${escapeAttribute(product.description)}" />
           </div>
           <div class="admin-field wide-field">
+            <label for="${product.id}-longDescription">Detailed Description</label>
+            <textarea id="${product.id}-longDescription" data-product-input="longDescription" rows="3">${escapeHtml(product.longDescription)}</textarea>
+          </div>
+          <div class="admin-field wide-field">
             <label for="${product.id}-origin">Origin</label>
             <input id="${product.id}-origin" data-product-input="origin" value="${escapeAttribute(product.origin)}" />
+          </div>
+          <div class="admin-field wide-field">
+            <label for="${product.id}-ingredients">Ingredients</label>
+            <input id="${product.id}-ingredients" data-product-input="ingredients" value="${escapeAttribute(product.ingredients)}" />
+          </div>
+          <div class="admin-field wide-field">
+            <label for="${product.id}-use">How to Use</label>
+            <textarea id="${product.id}-use" data-product-input="use" rows="2">${escapeHtml(product.use)}</textarea>
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-flavor">Flavor</label>
+            <input id="${product.id}-flavor" data-product-input="flavor" value="${escapeAttribute(product.flavor)}" />
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-heat">Heat</label>
+            <input id="${product.id}-heat" data-product-input="heat" value="${escapeAttribute(product.heat)}" />
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-oil">Aroma / Oil</label>
+            <input id="${product.id}-oil" data-product-input="oil" value="${escapeAttribute(product.oil)}" />
+          </div>
+          <div class="admin-field">
+            <label for="${product.id}-harvest">Harvest</label>
+            <input id="${product.id}-harvest" data-product-input="harvest" value="${escapeAttribute(product.harvest)}" />
+          </div>
+          <div class="admin-field wide-field">
+            <label>Product Images</label>
+            ${renderAdminGallery(product)}
           </div>
           <button class="primary-button" type="button" data-save-product="${product.id}">Save</button>
         </article>
@@ -2048,6 +2193,8 @@ function renderOrders() {
     <div class="details-grid">
       <div class="detail-box"><span>Phone</span><p>${escapeHtml(selectedOrder.phone)}</p></div>
       <div class="detail-box"><span>Payment</span><p>${escapeHtml(selectedOrder.payment)}</p></div>
+      <div class="detail-box"><span>Payment Status</span><p>${escapeHtml(selectedOrder.paymentStatus || "Pending")}</p></div>
+      <div class="detail-box"><span>Coupon</span><p>${escapeHtml(selectedOrder.couponCode || "None")}</p></div>
       <div class="detail-box"><span>Address</span><p>${escapeHtml(selectedOrder.address)}</p></div>
       <div class="detail-box"><span>Total</span><p>${formatMoney(getOrderTotal(selectedOrder))}</p></div>
     </div>
@@ -2067,6 +2214,11 @@ function renderOrders() {
         )
         .join("")}
     </div>
+    ${
+      Number(selectedOrder.discount) > 0
+        ? `<div class="summary-line"><span>${escapeHtml(selectedOrder.couponCode || "Discount")}</span><strong>-${formatMoney(selectedOrder.discount)}</strong></div>`
+        : ""
+    }
     <div class="summary-line"><span>Shipping</span><strong>${selectedOrder.shipping === 0 ? "Free" : formatMoney(selectedOrder.shipping)}</strong></div>
     <div class="summary-line total"><span>Order total</span><strong>${formatMoney(getOrderTotal(selectedOrder))}</strong></div>
   `;
@@ -2275,13 +2427,12 @@ async function placeOrder(formData) {
     }
 
     const enrichedCart = getCartItems();
-    const subtotal = enrichedCart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    if (subtotal < MIN_ORDER_VALUE) {
+    const pricing = getCartPricing(enrichedCart, appliedCouponCode);
+    if (pricing.subtotal < MIN_ORDER_VALUE) {
       showToast(`Minimum order value is ${formatMoney(MIN_ORDER_VALUE)}.`);
       return;
     }
 
-    const shipping = subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
     const customerName = String(formData.get("customer") || currentUser.name).trim();
     const phone = String(formData.get("phone") || "").trim();
     const address = String(formData.get("address") || "").trim();
@@ -2299,9 +2450,15 @@ async function placeOrder(formData) {
       email: currentUser.email,
       customer: currentUser.name,
       phone: currentUser.phone,
+      state: currentUser.state,
       address: `${currentUser.address}, ${currentUser.state}`.replace(/^,\s*|,\s*$/g, ""),
+      supabaseUserId: currentUser.supabaseUserId || "",
       payment: String(formData.get("payment") || "Razorpay"),
       status: "New",
+      subtotal: pricing.subtotal,
+      discount: pricing.discount,
+      couponCode: pricing.couponCode,
+      couponLabel: pricing.couponLabel,
       items: enrichedCart.map((item) => ({
         id: item.id,
         variantId: item.variantId,
@@ -2310,7 +2467,8 @@ async function placeOrder(formData) {
         price: item.price,
         qty: item.qty,
       })),
-      shipping,
+      shipping: pricing.shipping,
+      totalAmount: pricing.total,
       paymentStatus: "Pending",
     };
 
@@ -2324,7 +2482,9 @@ async function placeOrder(formData) {
     const savedOrder = result.order || order;
     orders = [savedOrder, ...orders.filter((item) => item.id !== savedOrder.id)];
     selectedOrderId = savedOrder.id;
+    void syncOrderToGoogleSheets(savedOrder);
     cart = [];
+    clearAppliedCouponState();
     saveState(ORDERS_KEY, orders);
     saveState(PRODUCTS_KEY, products);
     saveActiveCart();
@@ -2349,6 +2509,7 @@ async function collectRazorpayPayment({ order, currentUser }) {
   const razorpayOrder = await createRazorpayOrder({
     currency: "INR",
     receipt: order.id,
+    couponCode: order.couponCode || "",
     items: order.items.map((item) => ({
       id: item.id,
       variantId: item.variantId,
@@ -2459,6 +2620,30 @@ async function placeSupabaseOrder(order) {
   };
 }
 
+async function syncOrderToGoogleSheets(order) {
+  try {
+    const token = await getSupabaseAccessToken();
+    if (!token) return false;
+    const response = await fetch(ORDER_SYNC_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ order }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.ok === false) {
+      console.warn("Google Sheets sync did not complete.", result);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn("Google Sheets sync failed.", error);
+    return false;
+  }
+}
+
 function applyRemoteProducts(remoteProducts) {
   if (!Array.isArray(remoteProducts) || !remoteProducts.length) return;
 
@@ -2501,13 +2686,26 @@ async function saveProductFromAdmin(productId) {
   const productIndex = products.findIndex((item) => item.id === productId);
   const originalProduct = clone(product);
   const defaultVariant = getDefaultVariant(product);
+  const name = card.querySelector('[data-product-input="name"]').value.trim();
+  const category = card.querySelector('[data-product-input="category"]').value.trim();
+  const region = card.querySelector('[data-product-input="region"]').value.trim();
   const price = Number(card.querySelector('[data-product-input="price"]').value);
   const stock = Number(card.querySelector('[data-product-input="stock"]').value);
   const pack = card.querySelector('[data-product-input="pack"]').value.trim();
   const badge = card.querySelector('[data-product-input="badge"]').value.trim();
   const description = card.querySelector('[data-product-input="description"]').value.trim();
+  const longDescription = card.querySelector('[data-product-input="longDescription"]').value.trim();
   const origin = card.querySelector('[data-product-input="origin"]').value.trim();
+  const ingredients = card.querySelector('[data-product-input="ingredients"]').value.trim();
+  const use = card.querySelector('[data-product-input="use"]').value.trim();
+  const flavor = card.querySelector('[data-product-input="flavor"]').value.trim();
+  const heat = card.querySelector('[data-product-input="heat"]').value.trim();
+  const oil = card.querySelector('[data-product-input="oil"]').value.trim();
+  const harvest = card.querySelector('[data-product-input="harvest"]').value.trim();
 
+  product.name = name || product.name;
+  product.category = category || product.category;
+  product.region = region || product.region;
   if (Number.isFinite(price) && price > 0) {
     defaultVariant.price = Math.round(price);
     product.price = defaultVariant.price;
@@ -2517,7 +2715,14 @@ async function saveProductFromAdmin(productId) {
   product.pack = defaultVariant.label;
   product.badge = badge || product.badge;
   product.description = description || product.description;
+  product.longDescription = longDescription || product.longDescription || product.description;
   product.origin = origin || product.origin;
+  product.ingredients = ingredients || product.ingredients;
+  product.use = use || product.use;
+  product.flavor = flavor || product.flavor;
+  product.heat = heat || product.heat;
+  product.oil = oil || product.oil;
+  product.harvest = harvest || product.harvest;
 
   const result = await saveProductCatalog({ product });
   if (!result.remoteSaved) {
@@ -2542,11 +2747,7 @@ async function uploadProductImage(productId, file) {
   const originalImage = product.image;
 
   try {
-    showToast("Optimizing product image...");
-    const imageData = await resizeImageFile(file);
-
-    showToast("Uploading product image...");
-    product.image = await uploadDataUrlToSupabase(product.id, imageData);
+    product.image = await uploadOptimizedProductImage(product.id, file, "Uploading main image...");
     const result = await saveProductCatalog({ product });
     if (!result.remoteSaved) {
       product.image = originalImage;
@@ -2563,6 +2764,63 @@ async function uploadProductImage(productId, file) {
     console.warn("Product image upload failed.", error);
     showToast("Image upload failed. Set up Supabase Storage before uploading.");
   }
+}
+
+async function uploadProductGalleryImages(productId, files) {
+  const product = getProduct(productId);
+  if (!product) return;
+  const validFiles = files.filter((file) => file.type.startsWith("image/")).slice(0, 6);
+  if (!validFiles.length) {
+    showToast("Please choose image files.");
+    return;
+  }
+
+  const originalGallery = Array.isArray(product.gallery) ? [...product.gallery] : [];
+  try {
+    const uploadedImages = [];
+    for (const file of validFiles) {
+      uploadedImages.push(await uploadOptimizedProductImage(product.id, file, "Uploading gallery images..."));
+    }
+    product.gallery = [...originalGallery, ...uploadedImages].slice(0, 6);
+    const result = await saveProductCatalog({ product });
+    if (!result.remoteSaved) {
+      product.gallery = originalGallery;
+      renderAll();
+      showToast("Gallery was not saved. Set up Supabase products first.");
+      return;
+    }
+
+    renderAll();
+    showToast(`${product.name} gallery updated.`);
+  } catch (error) {
+    product.gallery = originalGallery;
+    renderAll();
+    console.warn("Gallery upload failed.", error);
+    showToast("Gallery upload failed. Set up Supabase Storage before uploading.");
+  }
+}
+
+async function removeProductGalleryImage(productId, galleryIndex) {
+  const product = getProduct(productId);
+  if (!product || !Array.isArray(product.gallery) || !Number.isInteger(galleryIndex)) return;
+  const originalGallery = [...product.gallery];
+  product.gallery.splice(galleryIndex, 1);
+  const result = await saveProductCatalog({ product });
+  if (!result.remoteSaved) {
+    product.gallery = originalGallery;
+    renderAll();
+    showToast("Could not remove gallery image globally.");
+    return;
+  }
+  renderAll();
+  showToast("Gallery image removed.");
+}
+
+async function uploadOptimizedProductImage(productId, file, message) {
+  showToast("Optimizing product image...");
+  const imageData = await resizeImageFile(file);
+  showToast(message);
+  return uploadDataUrlToSupabase(productId, imageData);
 }
 
 function resizeImageFile(file) {
@@ -2700,12 +2958,83 @@ function getCartItems() {
     .filter(Boolean);
 }
 
+function normalizeCouponCode(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function getCoupon(code) {
+  const normalized = normalizeCouponCode(code);
+  if (normalized !== TEST_COUPON_CODE) return null;
+  return {
+    code: TEST_COUPON_CODE,
+    label: "TEST99 99% off",
+    rate: 0.99,
+    waivesShipping: true,
+    minimumPayable: 1,
+  };
+}
+
+function getCartPricing(items, couponCode = appliedCouponCode) {
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const coupon = getCoupon(couponCode);
+  let discount = 0;
+  let shipping = subtotal === 0 || subtotal >= FREE_SHIPPING_VALUE ? 0 : SHIPPING_FEE;
+
+  if (coupon && subtotal >= MIN_ORDER_VALUE) {
+    discount = Math.min(subtotal - coupon.minimumPayable, Math.round(subtotal * coupon.rate));
+    if (coupon.waivesShipping) shipping = 0;
+  }
+
+  const total = Math.max(coupon?.minimumPayable || 0, subtotal - discount + shipping);
+  return {
+    couponCode: coupon?.code || "",
+    couponLabel: coupon?.label || "",
+    discount,
+    shipping,
+    subtotal,
+    total,
+  };
+}
+
+function applyCouponFromCart() {
+  const input = cartBody?.querySelector("#couponCode");
+  const code = normalizeCouponCode(input?.value);
+  const coupon = getCoupon(code);
+  if (!coupon) {
+    showToast(`Use ${TEST_COUPON_CODE} to test checkout at 99% off.`);
+    return;
+  }
+
+  const pricing = getCartPricing(getCartItems(), coupon.code);
+  if (pricing.subtotal < MIN_ORDER_VALUE) {
+    showToast(`Add ${formatMoney(MIN_ORDER_VALUE - pricing.subtotal)} more before applying ${coupon.code}.`);
+    return;
+  }
+
+  appliedCouponCode = coupon.code;
+  saveState(COUPON_KEY, appliedCouponCode);
+  renderCart();
+  showToast(`${coupon.code} applied.`);
+}
+
+function clearAppliedCoupon() {
+  clearAppliedCouponState();
+  renderCart();
+  showToast("Coupon removed.");
+}
+
+function clearAppliedCouponState() {
+  appliedCouponCode = "";
+  localStorage.removeItem(COUPON_KEY);
+}
+
 function getOrderSubtotal(order) {
-  return order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  return Number.isFinite(Number(order.subtotal)) ? Number(order.subtotal) : order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
 }
 
 function getOrderTotal(order) {
-  return getOrderSubtotal(order) + order.shipping;
+  if (Number.isFinite(Number(order.totalAmount))) return Number(order.totalAmount);
+  return getOrderSubtotal(order) - (Number(order.discount) || 0) + (Number(order.shipping) || 0);
 }
 
 function formatMoney(value) {
