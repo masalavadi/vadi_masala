@@ -1820,8 +1820,7 @@ async function initializeGoogleIdentity(identity) {
         cancel_on_tap_outside: false,
         context: "signin",
         nonce: noncePair.hashedNonce,
-        use_fedcm_for_button: true,
-        use_fedcm_for_prompt: true,
+        ux_mode: "popup",
       });
       isGoogleIdentityInitialized = true;
     })().catch((error) => {
