@@ -630,6 +630,20 @@ function wireGlobalEvents() {
     }
   });
 
+  document.body.addEventListener("keydown", (event) => {
+    const input = event.target.closest?.("[data-digits-only]");
+    if (!input || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key.length === 1 && !/^[0-9]$/.test(event.key)) event.preventDefault();
+  });
+
+  document.body.addEventListener("input", (event) => {
+    const input = event.target.closest?.("[data-digits-only]");
+    if (!input) return;
+    const maxLength = Number(input.dataset.maxDigits || input.getAttribute("maxlength")) || Number.POSITIVE_INFINITY;
+    const digits = input.dataset.digitsOnly === "phone" ? normalizeIndianPhone(input.value) : String(input.value || "").replace(/\D/g, "");
+    input.value = digits.slice(0, maxLength);
+  });
+
   navProductSearch.addEventListener("input", () => {
     applySearchQuery(navProductSearch.value);
   });
@@ -1199,15 +1213,15 @@ function renderCart() {
         <div class="form-grid">
           <div class="field">
             <label for="customerName">Name</label>
-            <input id="customerName" name="customer" autocomplete="name" value="${escapeAttribute(currentUser.name)}" required />
+            <input id="customerName" name="customer" autocomplete="name" value="${escapeAttribute(currentUser.name)}" minlength="2" maxlength="80" pattern="[A-Za-z][A-Za-z .'-]{1,79}" title="Enter a valid name using letters" required />
           </div>
           <div class="field">
             <label for="customerPhone">Phone</label>
-            <input id="customerPhone" name="phone" autocomplete="tel" value="${escapeAttribute(currentUser.phone || "")}" required />
+            <input id="customerPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" value="${escapeAttribute(normalizeIndianPhone(currentUser.phone))}" minlength="10" maxlength="14" pattern="[6-9][0-9]{9}" data-digits-only="phone" data-max-digits="10" title="Enter a valid 10-digit Indian mobile number" required />
           </div>
           <div class="field full">
             <label for="customerAddress">Address</label>
-            <textarea id="customerAddress" name="address" autocomplete="street-address" required>${escapeHtml(currentUser.address || "")}</textarea>
+            <textarea id="customerAddress" name="address" autocomplete="street-address" minlength="10" maxlength="300" required>${escapeHtml(currentUser.address || "")}</textarea>
           </div>
           <div class="field">
             <label for="paymentMethod">Payment</label>
@@ -1218,7 +1232,7 @@ function renderCart() {
           </div>
           <div class="field">
             <label for="customerState">State</label>
-            <input id="customerState" name="state" autocomplete="address-level1" value="${escapeAttribute(currentUser.state || "")}" required />
+            <input id="customerState" name="state" autocomplete="address-level1" value="${escapeAttribute(currentUser.state || "")}" minlength="2" maxlength="50" pattern="[A-Za-z][A-Za-z .'-]{1,49}" title="Enter a valid state using letters" required />
           </div>
         </div>
         <button class="primary-button" type="submit" ${pricing.subtotal < MIN_ORDER_VALUE || isPlacingOrder ? "disabled" : ""}>
@@ -2142,11 +2156,11 @@ function renderAdminProducts() {
           </div>
           <div class="admin-field">
             <label for="${product.id}-price">Base Price</label>
-            <input id="${product.id}-price" data-product-input="price" inputmode="numeric" type="number" min="1" value="${defaultVariant.price}" />
+            <input id="${product.id}-price" data-product-input="price" data-digits-only="integer" inputmode="numeric" type="text" pattern="[0-9]+" maxlength="7" value="${defaultVariant.price}" />
           </div>
           <div class="admin-field">
             <label for="${product.id}-stock">Quantity</label>
-            <input id="${product.id}-stock" data-product-input="stock" inputmode="numeric" type="number" min="0" value="${product.stock}" />
+            <input id="${product.id}-stock" data-product-input="stock" data-digits-only="integer" inputmode="numeric" type="text" pattern="[0-9]+" maxlength="6" value="${product.stock}" />
           </div>
           <div class="admin-field">
             <label for="${product.id}-badge">Badge</label>
@@ -2495,10 +2509,15 @@ async function placeOrder(formData) {
       return;
     }
 
-    const customerName = String(formData.get("customer") || currentUser.name).trim();
-    const phone = String(formData.get("phone") || "").trim();
-    const address = String(formData.get("address") || "").trim();
-    const state = String(formData.get("state") || "").trim();
+    const customerName = String(formData.get("customer") || currentUser.name).trim().replace(/\s+/g, " ");
+    const phone = normalizeIndianPhone(formData.get("phone"));
+    const address = String(formData.get("address") || "").trim().replace(/\s+/g, " ");
+    const state = String(formData.get("state") || "").trim().replace(/\s+/g, " ");
+    const validationError = getCheckoutDetailsValidationError({ customerName, phone, address, state });
+    if (validationError) {
+      showToast(validationError);
+      return;
+    }
     const requestedPaymentMethod = String(formData.get("payment") || "Razorpay");
     const paymentMethod = requestedPaymentMethod === "Cash on Delivery" ? "Cash on Delivery" : "Razorpay";
     currentUser.name = customerName || currentUser.name;
@@ -2535,6 +2554,8 @@ async function placeOrder(formData) {
       totalAmount: pricing.total,
       paymentStatus: paymentMethod === "Cash on Delivery" ? "Due on Delivery" : "Pending",
     };
+
+    await assertOrderCheckoutAvailable();
 
     if (paymentMethod === "Razorpay") {
       verifiedPayment = await collectRazorpayPayment({ order, currentUser });
@@ -2685,6 +2706,23 @@ async function placeSupabaseOrder(order) {
   };
 }
 
+async function assertOrderCheckoutAvailable() {
+  const client = await waitForSupabaseClient();
+  if (!client) throw new Error("CHECKOUT_NOT_CONFIGURED");
+
+  const { error } = await client.rpc("place_order", {
+    order_payload: {},
+  });
+  if (!error) return true;
+
+  const message = [error.code, error.message, error.details, error.hint].filter(Boolean).join(" ");
+  if (message.includes("ORDER_ID_REQUIRED")) return true;
+  if (message.includes("PGRST202") || message.includes("Could not find the function") || message.includes("schema cache")) {
+    throw new Error("CHECKOUT_NOT_CONFIGURED");
+  }
+  throw error;
+}
+
 async function syncOrderToGoogleSheets(order) {
   if (!order?.id) return false;
   return requestGoogleSheetsSync({ orderId: order.id });
@@ -2735,6 +2773,7 @@ function createOrderId() {
 function getCheckoutErrorMessage(error, options = {}) {
   const message = String(error?.message || error?.details || "");
   if (options.verifiedPayment) return "Payment verified, but order stock changed. Contact Vadi Masala support with your payment ID.";
+  if (message.includes("CHECKOUT_NOT_CONFIGURED")) return "Checkout is temporarily unavailable. Please try again shortly.";
   if (message.includes("PAYMENT_CANCELLED")) return "Payment cancelled. Your order was not placed.";
   if (message.includes("RAZORPAY_KEY_MISSING")) return "Razorpay is not configured yet.";
   if (message.includes("RAZORPAY_CHECKOUT_MISSING")) return "Payment checkout could not load. Please try again.";
@@ -2764,8 +2803,10 @@ async function saveProductFromAdmin(productId) {
   const name = card.querySelector('[data-product-input="name"]').value.trim();
   const category = card.querySelector('[data-product-input="category"]').value.trim();
   const region = card.querySelector('[data-product-input="region"]').value.trim();
-  const price = Number(card.querySelector('[data-product-input="price"]').value);
-  const stock = Number(card.querySelector('[data-product-input="stock"]').value);
+  const priceValue = card.querySelector('[data-product-input="price"]').value;
+  const stockValue = card.querySelector('[data-product-input="stock"]').value;
+  const price = Number(priceValue);
+  const stock = Number(stockValue);
   const pack = card.querySelector('[data-product-input="pack"]').value.trim();
   const badge = card.querySelector('[data-product-input="badge"]').value.trim();
   const description = card.querySelector('[data-product-input="description"]').value.trim();
@@ -2777,6 +2818,15 @@ async function saveProductFromAdmin(productId) {
   const heat = card.querySelector('[data-product-input="heat"]').value.trim();
   const oil = card.querySelector('[data-product-input="oil"]').value.trim();
   const harvest = card.querySelector('[data-product-input="harvest"]').value.trim();
+
+  if (!/^\d+$/.test(priceValue) || !Number.isInteger(price) || price < 1) {
+    showToast("Enter a valid product price using numbers only.");
+    return;
+  }
+  if (!/^\d+$/.test(stockValue) || !Number.isInteger(stock) || stock < 0) {
+    showToast("Enter valid product stock using numbers only.");
+    return;
+  }
 
   product.name = name || product.name;
   product.category = category || product.category;
@@ -2989,6 +3039,20 @@ function mergeCartItems(baseCart, incomingCart) {
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function normalizeIndianPhone(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.length > 10 && digits.startsWith("91")) digits = digits.slice(2);
+  return digits.slice(0, 10);
+}
+
+function getCheckoutDetailsValidationError({ customerName, phone, address, state }) {
+  if (!/^[A-Za-z][A-Za-z .'-]{1,79}$/.test(customerName)) return "Enter a valid customer name.";
+  if (!/^[6-9]\d{9}$/.test(phone)) return "Enter a valid 10-digit Indian mobile number.";
+  if (address.length < 10 || address.length > 300) return "Enter a complete delivery address.";
+  if (!/^[A-Za-z][A-Za-z .'-]{1,49}$/.test(state)) return "Enter a valid state name.";
+  return "";
 }
 
 function getInitials(name) {
