@@ -766,6 +766,7 @@ function wireGlobalEvents() {
     }
     saveState(ORDERS_KEY, orders);
     renderOrders();
+    void syncOrderToGoogleSheets(order);
     showToast(`Order ${order.id} marked ${order.status}.`);
   });
 
@@ -2035,6 +2036,7 @@ async function verifyAdminAccess() {
     const migratedLocalImages = await migrateLocalOnlyProductImages();
     if (!migratedLocalImages) await seedRemoteProductCatalogIfEmpty();
     await loadOrdersFromSupabase();
+    void syncAllOrdersToGoogleSheets();
     renderAll();
     return true;
   } catch (error) {
@@ -2540,7 +2542,7 @@ async function placeOrder(formData) {
     const savedOrder = result.order || order;
     orders = [savedOrder, ...orders.filter((item) => item.id !== savedOrder.id)];
     selectedOrderId = savedOrder.id;
-    void syncOrderToGoogleSheets(savedOrder);
+    await syncOrderToGoogleSheets(savedOrder);
     cart = [];
     clearAppliedCouponState();
     saveState(ORDERS_KEY, orders);
@@ -2679,6 +2681,16 @@ async function placeSupabaseOrder(order) {
 }
 
 async function syncOrderToGoogleSheets(order) {
+  if (!order?.id) return false;
+  return requestGoogleSheetsSync({ orderId: order.id });
+}
+
+async function syncAllOrdersToGoogleSheets() {
+  if (!isAdminAuthorized()) return false;
+  return requestGoogleSheetsSync({ syncAll: true });
+}
+
+async function requestGoogleSheetsSync(payload) {
   try {
     const token = await getSupabaseAccessToken();
     if (!token) return false;
@@ -2688,7 +2700,7 @@ async function syncOrderToGoogleSheets(order) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ order }),
+      body: JSON.stringify(payload),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || result.ok === false) {
