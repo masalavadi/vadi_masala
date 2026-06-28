@@ -1213,6 +1213,7 @@ function renderCart() {
             <label for="paymentMethod">Payment</label>
             <select id="paymentMethod" name="payment">
               <option value="Razorpay">Razorpay Online</option>
+              <option value="Cash on Delivery">Cash on Delivery</option>
             </select>
           </div>
           <div class="field">
@@ -1333,6 +1334,7 @@ function renderAccountOrder(order) {
           ? `<div class="summary-line"><span>${escapeHtml(order.couponCode || "Discount")}</span><strong>-${formatMoney(order.discount)}</strong></div>`
           : ""
       }
+      <div class="summary-line"><span>Payment</span><strong>${escapeHtml(order.payment || "Razorpay")}</strong></div>
       <div class="summary-line total"><span>Total</span><strong>${formatMoney(getOrderTotal(order))}</strong></div>
     </article>
   `;
@@ -2497,6 +2499,8 @@ async function placeOrder(formData) {
     const phone = String(formData.get("phone") || "").trim();
     const address = String(formData.get("address") || "").trim();
     const state = String(formData.get("state") || "").trim();
+    const requestedPaymentMethod = String(formData.get("payment") || "Razorpay");
+    const paymentMethod = requestedPaymentMethod === "Cash on Delivery" ? "Cash on Delivery" : "Razorpay";
     currentUser.name = customerName || currentUser.name;
     currentUser.phone = phone || currentUser.phone;
     currentUser.address = address || currentUser.address;
@@ -2513,7 +2517,7 @@ async function placeOrder(formData) {
       state: currentUser.state,
       address: `${currentUser.address}, ${currentUser.state}`.replace(/^,\s*|,\s*$/g, ""),
       supabaseUserId: currentUser.supabaseUserId || "",
-      payment: String(formData.get("payment") || "Razorpay"),
+      payment: paymentMethod,
       status: "New",
       subtotal: pricing.subtotal,
       discount: pricing.discount,
@@ -2529,13 +2533,14 @@ async function placeOrder(formData) {
       })),
       shipping: pricing.shipping,
       totalAmount: pricing.total,
-      paymentStatus: "Pending",
+      paymentStatus: paymentMethod === "Cash on Delivery" ? "Due on Delivery" : "Pending",
     };
 
-    verifiedPayment = await collectRazorpayPayment({ order, currentUser });
-    order.payment = "Razorpay";
-    order.paymentStatus = "Paid";
-    order.razorpay = verifiedPayment;
+    if (paymentMethod === "Razorpay") {
+      verifiedPayment = await collectRazorpayPayment({ order, currentUser });
+      order.paymentStatus = "Paid";
+      order.razorpay = verifiedPayment;
+    }
 
     const result = await placeSupabaseOrder(order);
     applyRemoteProducts(result.products);

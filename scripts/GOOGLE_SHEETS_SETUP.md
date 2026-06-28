@@ -22,5 +22,6 @@ GOOGLE_SHEETS_WEBHOOK_URL=<Apps Script /exec URL>
 GOOGLE_SHEETS_WEBHOOK_TOKEN=<same Script Property value>
 ```
 
-Opening the website admin panel backfills all Supabase orders. New paid
-orders and later order-status updates are then upserted by Order ID.
+Opening the website admin panel backfills all Supabase orders. New Razorpay
+and Cash on Delivery orders, plus later order-status updates, are then
+upserted by Order ID.
