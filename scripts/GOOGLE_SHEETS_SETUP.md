@@ -1,7 +1,7 @@
 # Vadi Masala Google Sheets Order Sync
 
 Target sheet:
-https://docs.google.com/spreadsheets/d/1Er9GCF4kyMrLLWKE7mdJxSRRa_451-s3OhmQk57MWSU/edit
+https://docs.google.com/spreadsheets/d/1Qty1AhyMYag69xdEIkKChy8ATz4xWyTUkL4RENkzcEM/edit
 
 ## Deploy the webhook
 

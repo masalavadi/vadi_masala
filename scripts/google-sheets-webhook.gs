@@ -24,9 +24,32 @@ const ORDER_HEADERS = [
   "Google Subject",
 ];
 
+const ORDER_SPREADSHEET_ID = "1Qty1AhyMYag69xdEIkKChy8ATz4xWyTUkL4RENkzcEM";
+
 function jsonResponse(payload, statusCode) {
   return ContentService.createTextOutput(JSON.stringify({ statusCode: statusCode || 200, ...payload }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrderSpreadsheet() {
+  return SpreadsheetApp.openById(ORDER_SPREADSHEET_ID);
+}
+
+function doGet() {
+  try {
+    const spreadsheet = getOrderSpreadsheet();
+    return jsonResponse(
+      {
+        ok: true,
+        spreadsheetId: spreadsheet.getId(),
+        spreadsheetUrl: spreadsheet.getUrl(),
+        sheetName: "Orders",
+      },
+      200,
+    );
+  } catch (error) {
+    return jsonResponse({ ok: false, error: String(error && error.message ? error.message : error) }, 500);
+  }
 }
 
 function sheetCellValue(header, value) {
@@ -104,7 +127,7 @@ function doPost(event) {
       return jsonResponse({ ok: false, error: "Missing order rows" }, 400);
     }
 
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const spreadsheet = getOrderSpreadsheet();
     const sheet = spreadsheet.getSheetByName("Orders") || spreadsheet.insertSheet("Orders");
     upsertOrderRows(sheet, validRows);
     return jsonResponse({ ok: true, synced: validRows.length }, 200);
